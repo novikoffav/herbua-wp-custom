@@ -32,19 +32,24 @@ Man_avatar.png and Woman_avatar.png are used to depict individuals when a true p
 - PHP: 8.0+ recommended
 - Theme: Blocksy (parent theme) installed separately
 - Plugins (3rd-party):
-  - ACF (Free)
-  - CPT UI
-  - WP All Export
-  - Child Theme Configurator (optional; not required for runtime)
+   - ACF (Advanced Custom Fields)
+   - CPT (Custom Post Type UI)
+   - WP All Export
+   - Child Theme Configurator (optional; not required for runtime)
 
 ## Installation (for a fresh WordPress site)
 
 1) Install WordPress and log in to wp-admin  
-2) Install **Blocksy** theme (parent theme), then activate it once  
-3) Copy this repo contents:
+2) Install **Blocksy** theme (parent theme), then activate it once
+3) Install and activate the next plugins through WordPress (free versions are enough):
+   - ACF (Advanced Custom Fields)
+   - CPT (Custom Post Type UI)
+   - WP All Export
+   - Child Theme Configurator (optional; not required for runtime)
+5) Copy this repo contents:
    - `plugins/*` → `wp-content/plugins/`
    - `themes/blocksy-child` → `wp-content/themes/blocksy-child`
-4) In wp-admin:
+6) In wp-admin:
    - Activate the 3 custom plugins (i.e., `collector-overview`, `collector-country-svg-map`, and `collector-portraits-slider`)
    - Activate the `blocksy-child` theme
 
