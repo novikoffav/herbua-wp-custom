@@ -24,6 +24,9 @@ Custom WordPress plugins + Blocksy child theme powering HerbUA collectors experi
 - `config/cpt-ui-export.txt` — CPT UI export code (CPT + taxonomies)
 - `themes/blocksy-child/acf-json/` — ACF Local JSON export (field groups)
 
+### Figs
+Man_avatar.png and Woman_avatar.png are used to depict individuals when a true portrait is unavailable. They are used to exclude persons without portraits from the slider. They can also be potentially used to filter for the man/woman option.
+
 ## Requirements
 - WordPress: 6.9
 - PHP: 8.0+ recommended
