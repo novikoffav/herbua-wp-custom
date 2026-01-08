@@ -1,2 +1,93 @@
 # herbua-wp-custom
-This is a custom repo allowing to configure WordPress for herbarium collectors databasing
+# HerbUA WordPress Custom Code
+
+Custom WordPress plugins + Blocksy child theme powering HerbUA collectors experience:
+- Collector overview statistics page
+- Interactive country SVG map page
+- Collector portraits slider (homepage)
+- Collector archive/search page and single collector page
+
+## What’s in this repo
+
+### Plugins
+- `collector-overview` — site statistics visualization page
+- `collector-country-svg-map` — interactive SVG map page (SVG embedded in plugin code)
+- `collector-portraits-slider` — portraits slider for homepage
+
+### Theme
+- `blocksy-child` — Blocksy child theme with custom templates:
+  - `archive-collector.php` — main database access + search page (CPT: `collector`)
+  - `single-collector.php` — single collector page
+  - `functions.php`, `style.css`
+
+### Config
+- `config/cpt-ui-export.txt` — CPT UI export code (CPT + taxonomies)
+- `themes/blocksy-child/acf-json/` — ACF Local JSON export (field groups)
+
+## Requirements
+- WordPress: 6.9
+- PHP: 8.0+ recommended
+- Theme: Blocksy (parent theme) installed separately
+- Plugins (3rd-party):
+  - ACF (Free)
+  - CPT UI
+  - WP All Export
+  - Child Theme Configurator (optional; not required for runtime)
+
+## Installation (for a fresh WordPress site)
+
+1) Install WordPress and log in to wp-admin  
+2) Install **Blocksy** theme (parent theme), then activate it once  
+3) Copy this repo contents:
+   - `plugins/*` → `wp-content/plugins/`
+   - `themes/blocksy-child` → `wp-content/themes/blocksy-child`
+4) In wp-admin:
+   - Activate the 3 custom plugins
+   - Activate the `blocksy-child` theme
+
+## CPT setup (CPT slug: `collector`)
+This project expects a Custom Post Type with slug: **collector**.
+
+Using CPT UI:
+1) Install + activate CPT UI  
+2) Go to: CPT UI → Tools → Import/Export  
+3) Paste the code from `config/cpt-ui-export.txt` and import.
+
+> Tip: For maximum portability, you can later migrate CPT registration from CPT UI into a custom plugin.
+
+## ACF setup (Free) — Field groups
+This repo stores ACF field definitions as **ACF Local JSON**.
+
+1) Install + activate ACF (Free)  
+2) Ensure ACF Local JSON is enabled and points to:
+   - `wp-content/themes/blocksy-child/acf-json/`
+3) In wp-admin go to: Custom Fields → Field Groups  
+   Field groups should auto-load from JSON.
+
+If you do not see the groups:
+- Visit Custom Fields → Tools and sync the JSON groups (if sync is available),
+- Or re-save a field group once to regenerate JSON.
+
+## WP All Export
+WP All Export is used for exporting data. We do not ship real exports in this repo.
+However, it is  used to generate the link for the 'Download CSV' button on the main archive page.
+Document your export templates/mappings in `config/notes.md` if needed.
+
+## Notes on data & privacy
+Do not commit:
+- real database dumps
+- personal information
+- wp-content/uploads
+- secrets / API keys
+
+For demo purposes, use anonymized sample data only.
+
+## Versioning / releases
+Use Git tags like:
+- `v0.1.0` initial public release
+- `v0.2.0` feature improvements
+- `v0.2.1` bugfixes
+
+## License
+GPL-3.0
+
