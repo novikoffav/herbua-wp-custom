@@ -63,14 +63,16 @@ Using CPT UI:
 
 > Tip: For maximum portability, you can later migrate CPT registration from CPT UI into a custom plugin.
 
-## ACF setup (Free) — Field groups
+## ACF (Local JSON) — Field groups
 This repo stores ACF field definitions as **ACF Local JSON**.
+ACF field groups are stored as JSON in:
+`wp-content/themes/blocksy-child/acf-json/`
 
-1) Install + activate ACF (Free)  
-2) Ensure ACF Local JSON is enabled and points to:
-   - `wp-content/themes/blocksy-child/acf-json/`
-3) In wp-admin go to: Custom Fields → Field Groups  
-   Field groups should auto-load from JSON.
+To apply them:
+1) Install + activate ACF (Free)
+2) Activate the `blocksy-child` theme
+3) Go to Custom Fields → Field Groups
+4) If you see “Sync available”, select groups and click Sync
 
 If you do not see the groups:
 - Visit Custom Fields → Tools and sync the JSON groups (if sync is available),
