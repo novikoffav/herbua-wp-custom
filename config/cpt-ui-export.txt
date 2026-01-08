@@ -1,0 +1,162 @@
+// Post Types settings (copy-past in the import fieeld of CPT UI: CPT UI -> Tools -> place in Import Post Types ) //
+
+{"collector":{"name":"collector","label":"Collectors","singular_label":"Collector","description":"","public":"true","publicly_queryable":"true","show_ui":"true","show_in_nav_menus":"true","delete_with_user":"false","show_in_rest":"true","rest_base":"","rest_controller_class":"","rest_namespace":"","has_archive":"true","has_archive_string":"","exclude_from_search":"false","capability_type":"post","hierarchical":"false","can_export":"false","rewrite":"true","rewrite_slug":"","rewrite_withfront":"true","query_var":"true","query_var_slug":"","menu_position":"","show_in_menu":"true","show_in_menu_string":"","menu_icon":null,"register_meta_box_cb":null,"supports":["title","editor","thumbnail","custom-fields"],"taxonomies":["geography_of_interest","area_of_interest"],"labels":{"menu_name":"","all_items":"","add_new":"","add_new_item":"","edit_item":"","new_item":"","view_item":"","view_items":"","search_items":"","not_found":"","not_found_in_trash":"","parent_item_colon":"","featured_image":"","set_featured_image":"","remove_featured_image":"","use_featured_image":"","archives":"","insert_into_item":"","uploaded_to_this_item":"","filter_items_list":"","items_list_navigation":"","items_list":"","attributes":"","name_admin_bar":"","item_published":"","item_published_privately":"","item_reverted_to_draft":"","item_trashed":"","item_scheduled":"","item_updated":""},"custom_supports":"","enter_title_here":""}}
+
+
+// Post Types settings in a code format //
+
+function cptui_register_my_cpts() {
+
+	/**
+	 * Post Type: Collectors.
+	 */
+
+	$labels = [
+		"name" => esc_html__( "Collectors", "custom-post-type-ui" ),
+		"singular_name" => esc_html__( "Collector", "custom-post-type-ui" ),
+	];
+
+	$args = [
+		"label" => esc_html__( "Collectors", "custom-post-type-ui" ),
+		"labels" => $labels,
+		"description" => "",
+		"public" => true,
+		"publicly_queryable" => true,
+		"show_ui" => true,
+		"show_in_rest" => true,
+		"rest_base" => "",
+		"rest_controller_class" => "WP_REST_Posts_Controller",
+		"rest_namespace" => "wp/v2",
+		"has_archive" => true,
+		"show_in_menu" => true,
+		"show_in_nav_menus" => true,
+		"delete_with_user" => false,
+		"exclude_from_search" => false,
+		"capability_type" => "post",
+		"map_meta_cap" => true,
+		"hierarchical" => false,
+		"can_export" => false,
+		"rewrite" => [ "slug" => "collector", "with_front" => true ],
+		"query_var" => true,
+		"supports" => [ "title", "editor", "thumbnail", "custom-fields" ],
+		"taxonomies" => [ "geography_of_interest", "area_of_interest" ],
+		"show_in_graphql" => false,
+	];
+
+	register_post_type( "collector", $args );
+}
+
+add_action( 'init', 'cptui_register_my_cpts' );
+
+
+
+
+// Taxonomies settings in a string format (copy-past in the import fieeld of CPT UI: CPT UI -> Tools -> place in Import Taxonomies) //
+
+{"geography":{"name":"geography","label":"Geographies","singular_label":"Geography","description":"","public":"true","publicly_queryable":"true","hierarchical":"false","show_ui":"true","show_in_menu":"true","show_in_nav_menus":"true","query_var":"true","query_var_slug":"","rewrite":"true","rewrite_slug":"","rewrite_withfront":"1","rewrite_hierarchical":"0","show_admin_column":"false","show_in_rest":"true","show_tagcloud":"false","sort":"false","show_in_quick_edit":"","rest_base":"","rest_controller_class":"","rest_namespace":"","labels":{"menu_name":"","all_items":"","edit_item":"","view_item":"","update_item":"","add_new_item":"","new_item_name":"","parent_item":"","parent_item_colon":"","search_items":"","popular_items":"","separate_items_with_commas":"","add_or_remove_items":"","choose_from_most_used":"","not_found":"","no_terms":"","items_list_navigation":"","items_list":"","back_to_items":"","name_field_description":"","parent_field_description":"","slug_field_description":"","desc_field_description":""},"meta_box_cb":"","default_term":"","object_types":["collector"]},"area":{"name":"area","label":"Areas of interest","singular_label":"Area of interest","description":"","public":"true","publicly_queryable":"true","hierarchical":"false","show_ui":"true","show_in_menu":"true","show_in_nav_menus":"true","query_var":"true","query_var_slug":"","rewrite":"true","rewrite_slug":"","rewrite_withfront":"1","rewrite_hierarchical":"0","show_admin_column":"false","show_in_rest":"true","show_tagcloud":"false","sort":"false","show_in_quick_edit":"","rest_base":"","rest_controller_class":"","rest_namespace":"","labels":{"menu_name":"","all_items":"","edit_item":"","view_item":"","update_item":"","add_new_item":"","new_item_name":"","parent_item":"","parent_item_colon":"","search_items":"","popular_items":"","separate_items_with_commas":"","add_or_remove_items":"","choose_from_most_used":"","not_found":"","no_terms":"","items_list_navigation":"","items_list":"","back_to_items":"","name_field_description":"","parent_field_description":"","slug_field_description":"","desc_field_description":""},"meta_box_cb":"","default_term":"","object_types":["collector"]},"herbarium":{"name":"herbarium","label":"Herbaria","singular_label":"Herbarium","description":"","public":"true","publicly_queryable":"true","hierarchical":"false","show_ui":"true","show_in_menu":"true","show_in_nav_menus":"true","query_var":"true","query_var_slug":"","rewrite":"true","rewrite_slug":"","rewrite_withfront":"1","rewrite_hierarchical":"0","show_admin_column":"false","show_in_rest":"true","show_tagcloud":"false","sort":"false","show_in_quick_edit":"","rest_base":"","rest_controller_class":"","rest_namespace":"","labels":{"menu_name":"","all_items":"","edit_item":"","view_item":"","update_item":"","add_new_item":"","new_item_name":"","parent_item":"","parent_item_colon":"","search_items":"","popular_items":"","separate_items_with_commas":"","add_or_remove_items":"","choose_from_most_used":"","not_found":"","no_terms":"","items_list_navigation":"","items_list":"","back_to_items":"","name_field_description":"","parent_field_description":"","slug_field_description":"","desc_field_description":""},"meta_box_cb":"","default_term":"","object_types":["collector"]}}
+
+
+// Taxonomies settings in a code format //
+
+function cptui_register_my_taxes() {
+
+	/**
+	 * Taxonomy: Geographies.
+	 */
+
+	$labels = [
+		"name" => esc_html__( "Geographies", "custom-post-type-ui" ),
+		"singular_name" => esc_html__( "Geography", "custom-post-type-ui" ),
+	];
+
+	
+	$args = [
+		"label" => esc_html__( "Geographies", "custom-post-type-ui" ),
+		"labels" => $labels,
+		"public" => true,
+		"publicly_queryable" => true,
+		"hierarchical" => false,
+		"show_ui" => true,
+		"show_in_menu" => true,
+		"show_in_nav_menus" => true,
+		"query_var" => true,
+		"rewrite" => [ 'slug' => 'geography', 'with_front' => true, ],
+		"show_admin_column" => false,
+		"show_in_rest" => true,
+		"show_tagcloud" => false,
+		"rest_base" => "geography",
+		"rest_controller_class" => "WP_REST_Terms_Controller",
+		"rest_namespace" => "wp/v2",
+		"show_in_quick_edit" => false,
+		"sort" => false,
+		"show_in_graphql" => false,
+	];
+	register_taxonomy( "geography", [ "collector" ], $args );
+
+	/**
+	 * Taxonomy: Areas of interest.
+	 */
+
+	$labels = [
+		"name" => esc_html__( "Areas of interest", "custom-post-type-ui" ),
+		"singular_name" => esc_html__( "Area of interest", "custom-post-type-ui" ),
+	];
+
+	
+	$args = [
+		"label" => esc_html__( "Areas of interest", "custom-post-type-ui" ),
+		"labels" => $labels,
+		"public" => true,
+		"publicly_queryable" => true,
+		"hierarchical" => false,
+		"show_ui" => true,
+		"show_in_menu" => true,
+		"show_in_nav_menus" => true,
+		"query_var" => true,
+		"rewrite" => [ 'slug' => 'area', 'with_front' => true, ],
+		"show_admin_column" => false,
+		"show_in_rest" => true,
+		"show_tagcloud" => false,
+		"rest_base" => "area",
+		"rest_controller_class" => "WP_REST_Terms_Controller",
+		"rest_namespace" => "wp/v2",
+		"show_in_quick_edit" => false,
+		"sort" => false,
+		"show_in_graphql" => false,
+	];
+	register_taxonomy( "area", [ "collector" ], $args );
+
+	/**
+	 * Taxonomy: Herbaria.
+	 */
+
+	$labels = [
+		"name" => esc_html__( "Herbaria", "custom-post-type-ui" ),
+		"singular_name" => esc_html__( "Herbarium", "custom-post-type-ui" ),
+	];
+
+	
+	$args = [
+		"label" => esc_html__( "Herbaria", "custom-post-type-ui" ),
+		"labels" => $labels,
+		"public" => true,
+		"publicly_queryable" => true,
+		"hierarchical" => false,
+		"show_ui" => true,
+		"show_in_menu" => true,
+		"show_in_nav_menus" => true,
+		"query_var" => true,
+		"rewrite" => [ 'slug' => 'herbarium', 'with_front' => true, ],
+		"show_admin_column" => false,
+		"show_in_rest" => true,
+		"show_tagcloud" => false,
+		"rest_base" => "herbarium",
+		"rest_controller_class" => "WP_REST_Terms_Controller",
+		"rest_namespace" => "wp/v2",
+		"show_in_quick_edit" => false,
+		"sort" => false,
+		"show_in_graphql" => false,
+	];
+	register_taxonomy( "herbarium", [ "collector" ], $args );
+}
+add_action( 'init', 'cptui_register_my_taxes' );
