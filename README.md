@@ -1,5 +1,5 @@
 # herbua-wp-custom
-# HerbUA WordPress Custom Code
+# herbUA Collectors
 
 Custom WordPress plugins + Blocksy child theme powering HerbUA collectors experience:
 - Collector overview statistics page
