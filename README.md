@@ -1,4 +1,3 @@
-# herbua-wp-custom
 # herbUA Collectors
 
 Custom WordPress plugins + Blocksy child theme powering HerbUA collectors experience:
@@ -91,6 +90,9 @@ Do not commit:
 - secrets / API keys
 
 For demo purposes, use anonymized sample data only.
+
+## Implementation examples
+The repo has been developed and realized within herbUA initiative and can be accessed from https://wp.herbua.com/
 
 ## Versioning / releases
 - `v0.1.0` initial public release
