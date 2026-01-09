@@ -160,7 +160,7 @@ add_shortcode('collector_portraits_slider', function($atts){
             if(!$img) continue;
 
             $open=$a['link']==='yes'?'<a href="'.esc_url(get_permalink($post_id)).'" aria-label="'.esc_attr($title).'">':'';
-            $close=$a['link']==='yes'?'</a>':'';
+            $close = !empty($a['link']) && strtolower(trim($a['link'])) === 'yes' ? '</a>' : '';
             echo '<div class="swiper-slide"><div class="cps-frame">'.$open.$img.$close.'</div></div>';
         }
         ?>
