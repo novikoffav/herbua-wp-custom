@@ -1,10 +1,11 @@
 # herbUA Collectors
 
 Custom WordPress plugins + Blocksy child theme powering HerbUA collectors experience:
-- Collector overview statistics page
+- Main collectors database page and search
+- Collector profile page
+- General statistics page
 - Interactive country SVG map page
-- Collector portraits slider (homepage)
-- Collector archive/search page and single collector page
+- Collector portraits slider
 
 ## What’s in this repo
 
