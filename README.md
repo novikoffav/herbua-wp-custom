@@ -80,8 +80,8 @@ If you do not see the groups:
 
 ## WP All Export
 WP All Export is used for exporting data. We do not ship real exports in this repo.
-However, it is  used to generate the link for the 'Download CSV' button on the main archive page.
-Document your export templates/mappings in `config/notes.md` if needed.
+However, it is  used to generate the link for the 'Download CSV' button on the main archive page. To set up the download link, go to archive-collector.php file in a child theme (the place for link is indicated within the provided file).
+
 
 ## Notes on data & privacy
 Do not commit:
