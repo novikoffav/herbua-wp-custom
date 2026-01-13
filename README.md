@@ -52,8 +52,9 @@ Man_avatar.png and Woman_avatar.png are used to depict individuals when a true p
    - `plugins/*` → `wp-content/plugins/`
    - `themes/blocksy-child` → `wp-content/themes/blocksy-child`
 6) In wp-admin:
-   - Activate the 3 custom plugins (i.e., `collector-overview`, `collector-country-svg-map`, and `collector-portraits-slider`)
    - Activate the `blocksy-child` theme
+   - Activate the 3 custom plugins (i.e., `collector-overview`, `collector-country-svg-map`, and `collector-portraits-slider`)
+   - Configure CPT and ACF plugins (see instructions below)
 
 ## CPT setup (CPT slug: `collector`)
 This project expects a Custom Post Type with slug: **collector**.
