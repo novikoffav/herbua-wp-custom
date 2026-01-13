@@ -11,7 +11,7 @@ Custom WordPress plugins + Blocksy child theme powering HerbUA collectors experi
 
 ### Plugins
 - `collector-overview` — General Statistics plugin; site statistics visualization page
-- `collector-country-svg-map` — Interactive map plugin; interactive SVG map page (SVG embedded in plugin code)
+- `collector-country-svg-map` — Interactive Map plugin; interactive SVG map page (SVG embedded in plugin code)
 - `collector-portraits-slider` — Portraits Slider plugin; portraits slider for homepage
 
 ### Child theme
