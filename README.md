@@ -10,11 +10,11 @@ Custom WordPress plugins + Blocksy child theme powering HerbUA collectors experi
 ## What’s in this repo
 
 ### Plugins
-- `collector-overview` — site statistics visualization page
-- `collector-country-svg-map` — interactive SVG map page (SVG embedded in plugin code)
-- `collector-portraits-slider` — portraits slider for homepage
+- `collector-overview` — General Statistics plugin; site statistics visualization page
+- `collector-country-svg-map` — Interactive map plugin; interactive SVG map page (SVG embedded in plugin code)
+- `collector-portraits-slider` — Portraits Slider plugin; portraits slider for homepage
 
-### Theme
+### Child theme
 - `blocksy-child` — Blocksy child theme with custom templates:
   - `archive-collector.php` — main database access + search page (CPT: `collector`)
   - `single-collector.php` — single collector page
