@@ -13,6 +13,7 @@ Custom WordPress plugins + Blocksy child theme powering HerbUA collectors experi
 - `collector-overview` — General Statistics plugin; site statistics visualization page
 - `collector-country-svg-map` — Interactive Map plugin; interactive SVG map page (SVG embedded in plugin code)
 - `collector-portraits-slider` — Portraits Slider plugin; portraits slider for homepage
+  These custom plugins can be applied using shortcodes. Examples of the shortcodes (e.g., [collector_portraits_slider width="150" ratio="3/4" radius="12" autoplay="yes" speed="13000" pause="yes" reverse="no" count="200"]) are provided in the respective README.md files.
 
 ### Child theme
 - `blocksy-child` — Blocksy child theme with custom templates:
