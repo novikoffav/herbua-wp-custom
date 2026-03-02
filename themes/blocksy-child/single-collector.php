@@ -10,9 +10,6 @@
  * living_years, activity_years, orcid, bionomia, wikipedia, wikidata,
  * ipni, viaf, huh, zobodat, jstor, biography, notes, references,
  * label_example[1..5]
- * 
- * Author:      Andriy Novikov
- * License: GPL-3.0
  */
 
 get_header();
@@ -79,6 +76,7 @@ while ( have_posts() ) : the_post();
   $alternative_names = get_field('alternative_names', $id);
   $living_years      = get_field('living_years', $id);
   $activity_years    = get_field('activity_years', $id);
+  $pr                = get_field('portrait_rights');
   
   // Get values from ACF (meta keys)
 $lsid = get_field('herbua_lsid');            // e.g. urn:lsid:herbua.com:collectors:000347-1
@@ -133,10 +131,66 @@ $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
           <!-- LEFT COLUMN: portrait + quick facts -->
           <div class="collector-left">
             <?php if (!empty($portrait)) : ?>
-              <div class="collector-portrait">
-                <?php echo col_img_from_acf($portrait, 'large', ['class'=>'collector-photo', 'alt'=>$display_title]); ?>
-              </div>
-            <?php endif; ?>
+  <div class="collector-portrait">
+    <?php echo col_img_from_acf($portrait, 'large', ['class'=>'collector-photo', 'alt'=>$display_title]); ?>
+
+    <?php
+   
+    if (!empty($pr) && (
+        !empty($pr['credit']) ||
+        !empty($pr['rights_type']) ||
+        !empty($pr['source_url'])
+    )):
+
+      $cc_map = [
+        'CC_BY'    => ['CC BY',    'https://creativecommons.org/licenses/by/4.0/'],
+        'CC_BY_SA' => ['CC BY-SA', 'https://creativecommons.org/licenses/by-sa/4.0/'],
+        'CC_BY_NC' => ['CC BY-NC', 'https://creativecommons.org/licenses/by-nc/4.0/'],
+        'CC_BY_ND' => ['CC BY-ND', 'https://creativecommons.org/licenses/by-nd/4.0/'],
+        'CC0'      => ['CC0',      'https://creativecommons.org/publicdomain/zero/1.0/'],
+      ];
+
+      $rights_label_map = [
+        'public_domain' => 'Public domain',
+        'permission'    => 'Used with permission',
+        'copyrighted'   => 'All rights reserved',
+        'unknown'       => 'Rights unknown',
+      ];
+    ?>
+
+      <div class="img-rights portrait-rights">
+
+        <?php if (!empty($pr['credit'])): ?>
+          <?php echo esc_html($pr['credit']); ?>
+        <?php endif; ?>
+
+        <?php
+          $type = $pr['rights_type'] ?? 'unknown';
+          if (!empty($pr['credit'])) echo ' · ';
+        ?>
+
+        <?php if ($type === 'cc'): ?>
+          <?php
+            $code = $pr['cc_license'] ?? 'CC_BY';
+            [$label, $default_url] = $cc_map[$code] ?? ['CC BY', 'https://creativecommons.org/licenses/by/4.0/'];
+            $url = !empty($pr['license_url']) ? $pr['license_url'] : $default_url;
+          ?>
+          <a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener">
+            <?php echo esc_html($label); ?>
+          </a>
+        <?php else: ?>
+          <?php echo esc_html($rights_label_map[$type] ?? 'Rights unknown'); ?>
+        <?php endif; ?>
+
+        <?php if (!empty($pr['source_url'])): ?>
+          · <a href="<?php echo esc_url($pr['source_url']); ?>" target="_blank" rel="noopener">Source</a>
+        <?php endif; ?>
+
+      </div>
+
+    <?php endif; ?>
+  </div>
+<?php endif; ?>
 
 <?php
     $lsid = get_post_meta(get_the_ID(), 'herbua_lsid', true);
@@ -235,26 +289,59 @@ $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
             <?php endif; ?>
 
             <?php
-              $labels = array_filter([$label_example, $label_example_2, $label_example_3, $label_example_4, $label_example_5]);
-              if (!empty($labels)) : ?>
-              <section class="collector-section">
-                <h2>Label examples</h2>
-                <div class="collector-labels">
-                  <?php foreach ($labels as $lb): ?>
-                    <figure class="label-item">
-                      <a href="<?php echo esc_url($lb['url']); ?>" target="_blank" rel="noopener">
-                        <img 
-                          class="label-img"
-                          src="<?php echo esc_url($lb['sizes']['large']); ?>"
-                          alt="<?php echo esc_attr($lb['alt'] ?: 'Label example'); ?>"
-                          loading="lazy"
-                        >
-                      </a>
-                  </figure>
-                <?php endforeach; ?>
-                </div>
-              </section>
+$labels = array_filter([$label_example, $label_example_2, $label_example_3, $label_example_4, $label_example_5]);
+
+if (!empty($labels)) :
+  $rights = get_field('label_rights');
+
+  $license_map = [
+    'CC_BY' => 'CC BY',
+    'CC_BY_NC' => 'CC BY-NC',
+    'CC_BY_SA' => 'CC BY-SA',
+    'CC_BY_ND' => 'CC BY-ND',
+    'CC0' => 'CC0',
+    'Public_Domain' => 'Public Domain',
+    'All_Rights_Reserved' => 'All rights reserved',
+  ];
+
+  $license_code  = $rights['license_code'] ?? 'CC_BY';
+  $license_label = $license_map[$license_code] ?? 'CC BY';
+  $attrib        = trim($rights['attribution'] ?? '');
+  $source_url    = trim($rights['source_url'] ?? '');
+?>
+  <section class="collector-section">
+    <h2>Label examples</h2>
+
+    <div class="collector-labels">
+      <?php foreach ($labels as $lb): ?>
+        <figure class="label-item">
+          <a href="<?php echo esc_url($lb['url']); ?>" target="_blank" rel="noopener">
+            <img
+             class="label-img"
+             src="<?php echo esc_url($lb['sizes']['large']); ?>"
+             width="<?php echo esc_attr($lb['sizes']['large-width']); ?>"
+             height="<?php echo esc_attr($lb['sizes']['large-height']); ?>"
+             alt="<?php echo esc_attr($lb['alt'] ?: 'Label example'); ?>"
+             loading="lazy"
+            >
+          </a>
+
+          <figcaption class="img-rights">
+            <?php if ($attrib !== ''): ?>
+              <?php echo esc_html($attrib); ?> ·
             <?php endif; ?>
+
+            <?php echo esc_html($license_label); ?>
+
+            <?php if ($source_url !== ''): ?>
+              · <a href="<?php echo esc_url($source_url); ?>" target="_blank" rel="noopener">Source</a>
+            <?php endif; ?>
+          </figcaption>
+        </figure>
+      <?php endforeach; ?>
+    </div>
+  </section>
+<?php endif; ?>
 
 <?php
             // External identifiers / links block (full URLs from ACF)
@@ -324,14 +411,36 @@ $pid  = $oid ? home_url("/id/collectors/{$oid}") : get_permalink();
     .collector-links-list li { margin:.3rem 0; }
     .collector-links-list a { text-decoration:underline; }
 
-    .collector-labels { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:1rem; }
-    .label-item {
-  aspect-ratio: 4 / 2; /* makes all boxes square — optional */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.9);
-  overflow: hidden;
-  border-radius: 10px;
+    .collector-labels { 
+  display:grid; 
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); 
+  gap:1rem; 
 }
-    .label-img { width:100%; height:auto; border-radius:10px; }
+
+.label-item{
+  display:flex;
+  flex-direction:column;
+  gap:.35rem;
+}
+
+.label-item a{ 
+  display:block; 
+  border-radius:10px;
+  overflow:hidden;              /* clip ONLY the image, not the caption */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+.label-img{ 
+  width:100%; 
+  height:auto; 
+  display:block;
+}
+
+.img-rights{
+  font-size:0.85rem;
+  line-height:1.3;
+  opacity:0.85;
+}
   </style>
 
 <?php
