@@ -11,3 +11,14 @@ Updated: 2025-10-21 17:09:49
 
 */
 
+.label-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: zoom-in;
+  transition: transform .2s ease;
+}
+
+.label-item a:hover .label-img {
+  transform: scale(1.03);
+}
