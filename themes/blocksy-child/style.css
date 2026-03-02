@@ -22,3 +22,16 @@ Updated: 2025-10-21 17:09:49
 .label-item a:hover .label-img {
   transform: scale(1.03);
 }
+
+.img-rights{
+  font-size: 0.85rem;
+  margin-top: 0.35rem;
+  line-height: 1.3;
+  opacity: 0.85;
+}
+.img-rights a{ text-decoration: underline; }
+
+.portrait-rights{
+  text-align:center;
+  margin-top:.4rem;
+}
