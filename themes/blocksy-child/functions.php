@@ -92,3 +92,15 @@ add_filter('acf/settings/load_json', function ($paths) {
     return $paths;
 });
 
+add_filter('acf/update_value/name=biography', function ($value, $post_id, $field) {
+    if (!is_string($value)) return $value;
+
+    // Replace all line breaks with a space
+    $value = preg_replace("/\r\n|\r|\n/", " ", $value);
+
+    // Collapse repeated whitespace
+    $value = preg_replace("/\s+/", " ", $value);
+
+    return trim($value);
+}, 10, 3);
+
