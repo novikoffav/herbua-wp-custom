@@ -99,7 +99,7 @@ For demo purposes, use anonymized sample data only.
 The repo has been developed and realized within herbUA initiative and can be accessed from https://wp.herbua.com/
 
 ## Versioning / releases
-- `v0.1.1` initial public release
+- `v0.1.2` initial public release
 
 ## License
 GPL-3.0
