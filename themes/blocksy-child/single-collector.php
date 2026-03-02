@@ -240,7 +240,18 @@ $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
               <section class="collector-section">
                 <h2>Label examples</h2>
                 <div class="collector-labels">
-                  <?php foreach ($labels as $lb) echo '<figure class="label-item">'.col_img_from_acf($lb, 'large', ['class'=>'label-img', 'alt'=>'Label example']).'</figure>'; ?>
+                  <?php foreach ($labels as $lb): ?>
+                    <figure class="label-item">
+                      <a href="<?php echo esc_url($lb['url']); ?>" target="_blank" rel="noopener">
+                        <img 
+                          class="label-img"
+                          src="<?php echo esc_url($lb['sizes']['large']); ?>"
+                          alt="<?php echo esc_attr($lb['alt'] ?: 'Label example'); ?>"
+                          loading="lazy"
+                        >
+                      </a>
+                  </figure>
+                <?php endforeach; ?>
                 </div>
               </section>
             <?php endif; ?>
