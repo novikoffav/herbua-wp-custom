@@ -93,6 +93,7 @@ $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
   $huh       = get_field('huh', $id);
   $zobodat   = get_field('zobodat', $id);
   $jstor     = get_field('jstor', $id);
+  $indexs    = get_field('indexs', $id);
 
   $biography  = get_field('biography', $id);
   $notes      = get_field('notes', $id);
@@ -355,6 +356,7 @@ if (!empty($labels)) :
               col_link_item('HUH',       $huh),
               col_link_item('ZOBODAT',   $zobodat),
               col_link_item('JSTOR',     $jstor),
+              col_link_item('IndExs',    $indexs),
             ]);
             if (!empty($links_html)) : ?>
               <section class="collector-section collector-links">
