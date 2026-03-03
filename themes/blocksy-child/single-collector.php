@@ -162,6 +162,7 @@ $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
       <div class="img-rights portrait-rights">
 
         <?php if (!empty($pr['credit'])): ?>
+          <span class="credit-label">Credit:</span>
           <?php echo esc_html($pr['credit']); ?>
         <?php endif; ?>
 
