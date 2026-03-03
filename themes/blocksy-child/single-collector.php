@@ -93,7 +93,7 @@ $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
   $huh       = get_field('huh', $id);
   $zobodat   = get_field('zobodat', $id);
   $jstor     = get_field('jstor', $id);
-  $indexs    = get_field('indexs', $id);
+  $indexs_group = get_field('indexs_group');
 
   $biography  = get_field('biography', $id);
   $notes      = get_field('notes', $id);
@@ -346,18 +346,32 @@ if (!empty($labels)) :
 
 <?php
             // External identifiers / links block (full URLs from ACF)
-            $links_html = array_filter([
-              col_link_item('ORCID',     $orcid),
-              col_link_item('Bionomia',  $bionomia),
-              col_link_item('Wikipedia', $wikipedia),
-              col_link_item('Wikidata',  $wikidata),
-              col_link_item('IPNI',      $ipni),
-              col_link_item('VIAF',      $viaf),
-              col_link_item('HUH',       $huh),
-              col_link_item('ZOBODAT',   $zobodat),
-              col_link_item('JSTOR',     $jstor),
-              col_link_item('IndExs',    $indexs),
-            ]);
+            
+            $indexs_items = [];
+
+if (is_array($indexs_group)) {
+  for ($i = 1; $i <= 5; $i++) {
+    $url = trim($indexs_group["indexs_$i"] ?? '');
+    if ($url === '') continue;
+
+    $label = trim($indexs_group["label_$i"] ?? '');
+    $title = $label !== '' ? "IndExs — $label" : "IndExs ($i)";
+
+    $indexs_items[] = col_link_item($title, $url);
+  }
+}
+
+$links_html = array_filter(array_merge([
+  col_link_item('ORCID',     $orcid),
+  col_link_item('Bionomia',  $bionomia),
+  col_link_item('Wikipedia', $wikipedia),
+  col_link_item('Wikidata',  $wikidata),
+  col_link_item('IPNI',      $ipni),
+  col_link_item('VIAF',      $viaf),
+  col_link_item('HUH',       $huh),
+  col_link_item('ZOBODAT',   $zobodat),
+  col_link_item('JSTOR',     $jstor),
+], $indexs_items));
             if (!empty($links_html)) : ?>
               <section class="collector-section collector-links">
                 <h2>External resources</h2>
@@ -409,9 +423,30 @@ $pid  = $oid ? home_url("/id/collectors/{$oid}") : get_permalink();
 
     .collector-section { margin:1.25rem 0 1.75rem; }
     .collector-section h2 { margin-bottom:.5rem; }
-    .collector-links-list { list-style:none; margin:0; padding:0; }
-    .collector-links-list li { margin:.3rem 0; }
-    .collector-links-list a { text-decoration:underline; }
+    .collector-links-list{
+  list-style:none;
+  margin:0;
+  padding:0;
+
+  display:flex;
+  flex-wrap:wrap;
+  gap:.45rem;
+}
+
+.collector-links-list li{ margin:0; }
+
+.collector-links-list a{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.28rem .55rem;
+  border:1px solid var(--ct-border-color,#eee);
+  border-radius:10px;
+  text-decoration:none;
+  font-size:.95rem;
+  background:#fff;
+}
+.collector-links-list a:hover{ text-decoration:underline; }
 
     .collector-labels { 
   display:grid; 
