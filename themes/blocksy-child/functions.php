@@ -192,27 +192,185 @@ add_action('template_redirect', function () {
 
   // If JSON requested, return metadata instead of redirect
   if ($format === 'json') {
-    $lsid    = get_post_meta($post_id, 'herbua_lsid', true);
-    $version = (int) get_post_meta($post_id, 'herbua_version', true);
+    // --- Core identifier/meta
+$lsid    = get_post_meta($post_id, 'herbua_lsid', true);
+$version = (int) get_post_meta($post_id, 'herbua_version', true);
 
-    // Minimal but useful JSON record (extend anytime)
-    $data = [
-      'type'        => 'collector',
-      'title'       => get_the_title($post_id),
-      'wp_id'       => $post_id,
-      'object_id'   => $obj_id,
-      'version'     => $version ?: 1,
-      'lsid'        => $lsid ?: null,
-      'stable_id'   => home_url('/id/collectors/' . rawurlencode($obj_id)),
-      'canonical'   => get_permalink($post_id),
-      'modified'    => get_post_modified_time('c', true, $post_id),
-      'external'    => [
-        // If you later want: load ACF fields here.
-        // 'orcid' => get_field('orcid', $post_id),
-      ],
+// --- ACF helper
+$acf = function_exists('get_field');
+
+// --- ACF text fields you requested
+$standard_form     = $acf ? (get_field('standard_form', $post_id) ?: null) : null;
+$alternative_names = $acf ? (get_field('alternative_names', $post_id) ?: null) : null;
+$living_years      = $acf ? (get_field('living_years', $post_id) ?: null) : null;
+$activity_years    = $acf ? (get_field('activity_years', $post_id) ?: null) : null;
+$biography         = $acf ? (get_field('biography', $post_id) ?: null) : null;
+$notes             = $acf ? (get_field('notes', $post_id) ?: null) : null;
+$references        = $acf ? (get_field('references', $post_id) ?: null) : null;
+
+// --- External links (adjust field names if yours differ)
+$external_links = [];
+if ($acf) {
+  $external_links = array_filter([
+    'orcid'     => get_field('orcid', $post_id) ?: null,
+    'bionomia'  => get_field('bionomia', $post_id) ?: null,
+    'wikipedia' => get_field('wikipedia', $post_id) ?: null,
+    'wikidata'  => get_field('wikidata', $post_id) ?: null,
+    'ipni'      => get_field('ipni', $post_id) ?: null,
+    'viaf'      => get_field('viaf', $post_id) ?: null,
+    'huh'       => get_field('huh', $post_id) ?: null,
+    'zobodat'   => get_field('zobodat', $post_id) ?: null,
+    'jstor'     => get_field('jstor', $post_id) ?: null,
+  ]);
+}
+
+// --- IndExs pages (group: indexs_group; fields: indexs_1..indexs_5; optional: label_1..label_5)
+$indexs_payload = [];
+$indexs_group = $acf ? get_field('indexs_group', $post_id) : null;
+if (is_array($indexs_group)) {
+  for ($i = 1; $i <= 5; $i++) {
+    $u = trim($indexs_group["indexs_$i"] ?? '');
+    if ($u === '') continue;
+
+    $lab = trim($indexs_group["label_$i"] ?? '');
+    $indexs_payload[] = array_filter([
+      'url'   => $u,
+      'label' => $lab !== '' ? $lab : null,
+    ]);
+  }
+}
+
+// --- Portrait (ACF image field: portrait; returns array)
+$portrait = $acf ? get_field('portrait', $post_id) : null;
+$portrait_payload = null;
+if (is_array($portrait)) {
+  $portrait_payload = [
+    'id'    => $portrait['ID'] ?? null,
+    'url'   => $portrait['url'] ?? null,
+    'alt'   => $portrait['alt'] ?? null,
+    'title' => $portrait['title'] ?? null,
+  ];
+}
+
+// --- Portrait rights (ACF group: portrait_rights)
+$portrait_rights = $acf ? get_field('portrait_rights', $post_id) : null;
+$portrait_rights_payload = null;
+if (is_array($portrait_rights)) {
+  $portrait_rights_payload = array_filter([
+    'rights_type' => $portrait_rights['rights_type'] ?? null,
+    'credit'      => $portrait_rights['credit'] ?? null,
+    'source_url'  => $portrait_rights['source_url'] ?? null,
+    'cc_license'  => $portrait_rights['cc_license'] ?? null,
+    'license_url' => $portrait_rights['license_url'] ?? null,
+  ]);
+  if (empty($portrait_rights_payload)) $portrait_rights_payload = null;
+}
+
+// --- Label examples (ACF image fields: label_example...label_example_5)
+$label_fields = ['label_example','label_example_2','label_example_3','label_example_4','label_example_5'];
+$labels_payload = [];
+if ($acf) {
+  foreach ($label_fields as $fname) {
+    $img = get_field($fname, $post_id);
+    if (!is_array($img)) continue;
+
+    $labels_payload[] = array_filter([
+      'field' => $fname,
+      'id'    => $img['ID'] ?? null,
+      'url'   => $img['url'] ?? null,
+      'alt'   => $img['alt'] ?? null,
+      'title' => $img['title'] ?? null,
+    ]);
+  }
+}
+
+// --- Label rights group for ALL labels (CHANGE 'labels_rights' if your group name differs)
+$label_rights = $acf ? get_field('labels_rights', $post_id) : null;
+$label_rights_payload = null;
+if (is_array($label_rights)) {
+  $label_rights_payload = array_filter([
+    'rights_type' => $label_rights['rights_type'] ?? null,
+    'credit'      => $label_rights['credit'] ?? null,
+    'source_url'  => $label_rights['source_url'] ?? null,
+    'cc_license'  => $label_rights['cc_license'] ?? null,
+    'license_url' => $label_rights['license_url'] ?? null,
+  ]);
+  if (empty($label_rights_payload)) $label_rights_payload = null;
+}
+
+// --- Taxonomy helper
+$terms_to_simple = function($post_id, $tax) {
+  $out = [];
+  $terms = get_the_terms($post_id, $tax);
+  if (is_wp_error($terms) || empty($terms)) return $out;
+
+  foreach ($terms as $t) {
+    $out[] = [
+      'name' => $t->name,
+      'slug' => $t->slug,
     ];
+  }
+  return $out;
+};
 
-    herbua_send_json($data, 200);
+// IMPORTANT: replace 'geography' with your real countries taxonomy slug from CPT UI
+$countries_tax = 'geography'; // <-- CHANGE THIS if your taxonomy slug is different
+$countries_payload = $terms_to_simple($post_id, $countries_tax);
+
+// CPT UI taxonomies you requested
+$area_payload      = $terms_to_simple($post_id, 'area');
+$herbarium_payload = $terms_to_simple($post_id, 'herbarium');
+
+// --- Final JSON payload
+$data = [
+  'type'  => 'collector',
+  'title' => get_the_title($post_id),
+  'wp_id' => $post_id,
+
+  // Identifiers
+  'object_id' => $obj_id,
+  'version'   => $version ?: 1,
+  'lsid'      => $lsid ?: null,
+
+  // URLs
+  'stable_id' => home_url('/id/collectors/' . rawurlencode($obj_id)),
+  'canonical' => get_permalink($post_id),
+
+  // Timestamp
+  'modified'  => get_post_modified_time('c', true, $post_id),
+
+  // Content (ACF)
+  'content' => [
+    'standard_form'     => $standard_form,
+    'alternative_names' => $alternative_names,
+    'living_years'      => $living_years,
+    'activity_years'    => $activity_years,
+    'biography'         => $biography,
+    'notes'             => $notes,
+    'references'        => $references,
+  ],
+
+  // Links
+  'external_links' => $external_links,
+  'indexs'         => $indexs_payload,
+
+  // Taxonomies
+  'taxonomy' => [
+    'countries' => $countries_payload,
+    'area'      => $area_payload,
+    'herbarium' => $herbarium_payload,
+  ],
+
+  // Media + rights
+  'media' => [
+    'portrait'        => $portrait_payload,
+    'portrait_rights' => $portrait_rights_payload,
+    'labels'          => $labels_payload,
+    'labels_rights'   => $label_rights_payload,
+  ],
+];
+
+herbua_send_json($data, 200);
   }
 
   // Otherwise redirect to canonical collector page (HTML)
