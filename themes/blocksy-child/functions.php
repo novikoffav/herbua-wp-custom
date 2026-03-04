@@ -82,6 +82,13 @@ add_action('init', function () {
     'top'
   );
 
+  // Database-level list: /id/collectors.json
+  add_rewrite_rule(
+    '^id/collectors\.json/?$',
+    'index.php?herbua_collectors_list=1&herbua_format=json',
+    'top'
+);
+
 });
 
 
@@ -93,6 +100,7 @@ add_filter('query_vars', function ($vars) {
   $vars[] = 'herbua_format';
   $vars[] = 'herbua_lsid_ns';
   $vars[] = 'herbua_lsid_obj';
+  $vars[] = 'herbua_collectors_list';
   return $vars;
 });
 
@@ -133,8 +141,75 @@ function herbua_send_json($data, $status = 200) {
  */
 add_action('template_redirect', function () {
 
+// --- Database-level collectors list JSON
+$list = get_query_var('herbua_collectors_list');
+$format = get_query_var('herbua_format');
+
+// also allow /id/collectors.json?format=json (optional)
+if (isset($_GET['format']) && $_GET['format'] === 'json') {
+  $format = 'json';
+}
+
+if ($list && $format === 'json') {
+
+  // Pagination (safe defaults)
+  $page     = max(1, (int)($_GET['page'] ?? 1));
+  $per_page = (int)($_GET['per_page'] ?? 100);
+  $per_page = max(1, min(500, $per_page)); // cap at 500 to protect server
+
+  $q = new WP_Query([
+    'post_type'      => 'collector',
+    'post_status'    => 'publish',
+    'posts_per_page' => $per_page,
+    'paged'          => $page,
+    'orderby'        => 'title',
+    'order'          => 'ASC',
+    'fields'         => 'ids',
+    'no_found_rows'  => false, // we want totals
+  ]);
+
+  $items = [];
+
+  foreach ($q->posts as $pid) {
+    $obj_id  = get_post_meta($pid, 'herbua_object_id', true);
+    $lsid    = get_post_meta($pid, 'herbua_lsid', true);
+    $version = (int) get_post_meta($pid, 'herbua_version', true);
+
+    if (!$obj_id) {
+      // fallback if missing
+      $obj_id = str_pad((string)$pid, 6, '0', STR_PAD_LEFT);
+    }
+
+    $items[] = [
+      'title'     => get_the_title($pid),
+      'wp_id'     => $pid,
+      'object_id' => $obj_id,
+      'version'   => $version ?: 1,
+      'lsid'      => $lsid ?: null,
+      'stable_id' => home_url('/id/collectors/' . rawurlencode($obj_id)),
+      'json'      => home_url('/id/collectors/' . rawurlencode($obj_id) . '.json'),
+      'canonical' => get_permalink($pid),
+      'modified'  => get_post_modified_time('c', true, $pid),
+    ];
+  }
+
+  $total_items = (int) $q->found_posts;
+  $total_pages = (int) $q->max_num_pages;
+
+  herbua_send_json([
+    'type'        => 'collector_collection',
+    'stable_id'   => home_url('/id/collectors'),
+    'json'        => home_url('/id/collectors.json'),
+    'page'        => $page,
+    'per_page'    => $per_page,
+    'total_items' => $total_items,
+    'total_pages' => $total_pages,
+    'items'       => $items,
+  ], 200);
+}
+
   /**
-   * A) LSID resolution
+   * LSID resolution
    */
   $lsid_ns  = get_query_var('herbua_lsid_ns');
   $lsid_obj = get_query_var('herbua_lsid_obj');
@@ -165,7 +240,7 @@ add_action('template_redirect', function () {
 
 
   /**
-   * B/C) /id/collectors/{id}[.json]
+   *  /id/collectors/{id}[.json]
    */
   $obj_id = get_query_var('herbua_obj_id');
   if (!$obj_id) return;
