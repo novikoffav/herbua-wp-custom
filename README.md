@@ -124,10 +124,11 @@ e  IndExs_5  indexs_5  Link
 a  License ***  license  Select
 b  Attribution  attribution  Text
 c  Source URL  source_url  URL
-Collector Identifiers (LSID)
+Collector Identifiers (LSID) 
 1  HerbUA Object ID  herbua_object_id  Text
 2  HerbUA Version  herbua_version  Number
 3  HerbUA LSID  herbua_lsid  Text
+
 
 Choices for selective fields: * – cc : Creative Commons; public_domain : Public domain; permission : Used with permission; copyrighted : Copyrighted / All rights reserved; unknown : Unknown. ** – CC_BY : CC BY; CC_BY_SA : CC BY-SA; CC_BY_NC : CC BY-NC; CC_BY_ND : CC BY-ND CC0. *** – CC_BY : CC BY; CC_BY_NC : CC BY-NC; CC_BY_SA : CC BY-SA; CC_BY_ND : CC BY-ND; CC0 Public_Domain : Public Domain; All_Rights_Reserved : All rights reserved.
 
