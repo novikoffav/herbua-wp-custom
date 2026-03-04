@@ -81,9 +81,7 @@ If you do not see the groups:
 - Visit Custom Fields → Tools and sync the JSON groups (if sync is available),
 - Or re-save a field group once to regenerate JSON.
 
-Currently applied ACF fields and their types
-Nr  Label  Name  Type
-Collector Portfolio
+### Currently applied ACF fields and their types
 1  Portrait  portrait  Image
 2  Portrait rights  portrait_rights  Group
 a  Rights type *  rights_type  Select
@@ -124,7 +122,7 @@ e  IndExs_5  indexs_5  Link
 a  License ***  license  Select
 b  Attribution  attribution  Text
 c  Source URL  source_url  URL
-Collector Identifiers (LSID) 
+Collector Identifiers (LSID)
 1  HerbUA Object ID  herbua_object_id  Text
 2  HerbUA Version  herbua_version  Number
 3  HerbUA LSID  herbua_lsid  Text
