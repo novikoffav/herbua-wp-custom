@@ -81,7 +81,7 @@ If you do not see the groups:
 - Visit Custom Fields → Tools and sync the JSON groups (if sync is available),
 - Or re-save a field group once to regenerate JSON.
 
-Currently applied ACF fields and theit types
+Currently applied ACF fields and their types
 Nr	Label	Name	Type
 	Collector Portfolio		
 1	Portrait	portrait	Image
