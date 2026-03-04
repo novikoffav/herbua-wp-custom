@@ -82,52 +82,52 @@ If you do not see the groups:
 - Or re-save a field group once to regenerate JSON.
 
 Currently applied ACF fields and their types
-Nr	Label	Name	Type
-	Collector Portfolio		
-1	Portrait	portrait	Image
-2	Portrait rights	portrait_rights	Group
-a	Rights type *	rights_type	Select
-b	Credit	credit	Text
-c	Source URL	source_url	URL
-d	CC license **	cc_license	Select
-e	License URL	license_url	URL
-3	Surname	surname	Text
-4	Name	name	Text
-5	Standard form	standard_form	Text
-6	Alternative names	alternative_names	Text
-7	Living years	living_years	Text
-8	Activity years	activity_years	Text
-9	ORCID	orcid	Link
-10	Bionomia	bionomia	Link
-11	Wikipedia	wikipedia	Link
-12	Wikidata	wikidata	Link
-13	IPNI	ipni	Link
-14	VIAF	viaf	Link
-15	HUH	huh	Link
-16	Zobodat	zobodat	Link
-17	JSTOR Global Plants	jstor	Link
-18	IndExs Records	indexs_group	Group
-a	IndExs_1	indexs_1	Link
-b	IndExs_2	indexs_2	Link
-c	IndExs_3	indexs_3	Link
-d	IndExs_4	indexs_4	Link
-e	IndExs_5	indexs_5	Link
-19	Biography	biography	Text Area
-20	Notes	notes	Text
-21	References	references	Text
-22	Label example	label_example	Image
-23	Label example 2	label_example_2	Image
-24	Label example 3	label_example_3	Image
-25	Label example 4	label_example_4	Image
-26	Label example 5	label_example_5	Image
-27	Label Rights	label_rights	Group
-a	License ***	license	Select
-b	Attribution	attribution	Text
-c	Source URL	source_url	URL
-	Collector Identifiers (LSID)	
-1	HerbUA Object ID	herbua_object_id	Text
-2	HerbUA Version	herbua_version	Number
-3	HerbUA LSID	herbua_lsid	Text
+Nr  Label  Name  Type
+Collector Portfolio
+1  Portrait  portrait  Image
+2  Portrait rights  portrait_rights  Group
+a  Rights type *  rights_type  Select
+b  Credit  credit  Text
+c  Source URL  source_url  URL
+d  CC license **  cc_license  Select
+e  License URL  license_url  URL
+3  Surname  surname  Text
+4  Name  name  Text
+5  Standard form  standard_form  Text
+6  Alternative names  alternative_names  Text
+7  Living years  living_years  Text
+8  Activity years  activity_years  Text
+9  ORCID  orcid  Link
+10  Bionomia  bionomia  Link
+11  Wikipedia  wikipedia  Link
+12  Wikidata  wikidata  Link
+13  IPNI  ipni  Link
+14  VIAF  viaf  Link
+15  HUH  huh  Link
+16  Zobodat  zobodat  Link
+17  JSTOR Global Plants  jstor  Link
+18  IndExs records  indexs_group  Group
+a  IndExs_1  indexs_1  Link
+b  IndExs_2  indexs_2  Link
+c  IndExs_3  indexs_3  Link
+d  IndExs_4  indexs_4  Link
+e  IndExs_5  indexs_5  Link
+19  Biography  biography  Text Area
+20  Notes  notes  Text
+21  References  references  Text
+22  Label example  label_example  Image
+23  Label example 2  label_example_2  Image
+24  Label example 3  label_example_3  Image
+25  Label example 4  label_example_4  Image
+26  Label example 5  label_example_5  Image
+27  Label Rights  label_rights  Group
+a  License ***  license  Select
+b  Attribution  attribution  Text
+c  Source URL  source_url  URL
+Collector Identifiers (LSID)
+1  HerbUA Object ID  herbua_object_id  Text
+2  HerbUA Version  herbua_version  Number
+3  HerbUA LSID  herbua_lsid  Text
 
 Choices for selective fields: * – cc : Creative Commons; public_domain : Public domain; permission : Used with permission; copyrighted : Copyrighted / All rights reserved; unknown : Unknown. ** – CC_BY : CC BY; CC_BY_SA : CC BY-SA; CC_BY_NC : CC BY-NC; CC_BY_ND : CC BY-ND CC0. *** – CC_BY : CC BY; CC_BY_NC : CC BY-NC; CC_BY_SA : CC BY-SA; CC_BY_ND : CC BY-ND; CC0 Public_Domain : Public Domain; All_Rights_Reserved : All rights reserved.
 
