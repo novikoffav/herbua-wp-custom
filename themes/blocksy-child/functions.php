@@ -60,27 +60,28 @@ add_action('save_post', 'herbua_autogen_lsid', 10, 3);
  *    - /lsid/collectors/000257-1  -> herbua_lsid_ns=collectors & herbua_lsid_obj=000257-1 (LSID resolver)
  */
 add_action('init', function () {
-  // JSON form first (more specific)
+
+  // JSON: /id/collectors/000257.json
   add_rewrite_rule(
-    '^id/collectors/([A-Za-z0-9]+)/\.json/?$',
+    '^id/collectors/([A-Za-z0-9]+)\.json/?$',
     'index.php?herbua_obj_id=$matches[1]&herbua_format=json',
     'top'
   );
 
-  // HTML resolver
+  // HTML: /id/collectors/000257
   add_rewrite_rule(
     '^id/collectors/([A-Za-z0-9]+)/?$',
     'index.php?herbua_obj_id=$matches[1]',
     'top'
   );
 
-  // LSID resolver endpoint:
-  // /lsid/collectors/000257-1
+  // LSID: /lsid/collectors/000257-1
   add_rewrite_rule(
     '^lsid/([A-Za-z0-9_-]+)/([A-Za-z0-9_-]+)/?$',
     'index.php?herbua_lsid_ns=$matches[1]&herbua_lsid_obj=$matches[2]',
     'top'
   );
+
 });
 
 
