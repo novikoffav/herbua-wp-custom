@@ -212,7 +212,7 @@ if ($lsid) {
 
   if ($resolvable) {
     echo '<br><strong>Resolver URL:</strong>
-          <br><a href="' . esc_url($resolvable) . '">' . esc_html($resolvable) . '</a>';
+          <br><code><a href="' . esc_url($resolvable) . '">' . esc_html($resolvable) . '</a></code>';
   }
 
   echo '</p>';
