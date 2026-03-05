@@ -79,7 +79,7 @@ while ( have_posts() ) : the_post();
   $pr                = get_field('portrait_rights');
   
   // Get values from ACF (meta keys)
-$lsid = get_field('herbua_lsid');            // e.g. urn:lsid:herbua.com:collectors:000347-1
+$ = get_field('herbua_lsid');            // e.g. urn:lsid:herbua.com:collectors:000347-1
 $obj  = get_field('herbua_object_id');       // e.g. 000347
 $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
 
@@ -195,13 +195,28 @@ $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
 <?php endif; ?>
 
 <?php
-    $lsid = get_post_meta(get_the_ID(), 'herbua_lsid', true);
-        if ($lsid) {
-         echo '<p style="text-align: left; padding-left: 1rem;">
-          <strong>HerbUA LSID:</strong> 
-          <code>' . esc_html($lsid) . '</code>
-        </p>';
-        }
+$lsid = get_post_meta(get_the_ID(), 'herbua_lsid', true);
+
+if ($lsid) {
+
+  $resolvable = '';
+  if (preg_match('~^urn:lsid:[^:]+:([^:]+):(.+)$~', $lsid, $m)) {
+    $ns  = $m[1];
+    $obj = $m[2];
+    $resolvable = home_url('/lsid/' . rawurlencode($ns) . '/' . rawurlencode($obj));
+  }
+
+  echo '<p style="text-align:left; padding-left:1rem;">
+    <strong>HerbUA LSID:</strong> 
+    <code>' . esc_html($lsid) . '</code>';
+
+  if ($resolvable) {
+    echo '<br><strong>Resolver URL:</strong>
+          <br><a href="' . esc_url($resolvable) . '">' . esc_html($resolvable) . '</a>';
+  }
+
+  echo '</p>';
+}
 ?>
 
             <table class="collector-meta">
