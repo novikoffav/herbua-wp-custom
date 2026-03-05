@@ -79,7 +79,7 @@ while ( have_posts() ) : the_post();
   $pr                = get_field('portrait_rights');
   
   // Get values from ACF (meta keys)
-$ = get_field('herbua_lsid');            // e.g. urn:lsid:herbua.com:collectors:000347-1
+$lsid = get_field('herbua_lsid');            // e.g. urn:lsid:herbua.com:collectors:000347-1
 $obj  = get_field('herbua_object_id');       // e.g. 000347
 $ver  = (int) get_field('herbua_version');   // e.g. 1 (optional)
 
@@ -125,50 +125,42 @@ $post_id = get_the_ID();
 $obj_id = get_post_meta($post_id, 'herbua_object_id', true);
 $lsid   = get_post_meta($post_id, 'herbua_lsid', true);
 
-$stable_id = $obj_id ? home_url('/id/collectors/' . rawurlencode($obj_id)) : null;
+$stable_id = $obj_id ? home_url('/id/collectors/' . rawurlencode($obj_id)) : '';
+$entity_id = $stable_id ? $stable_id : get_permalink($post_id);
 
-// Optional: LSID resolver URL
-$lsid_resolver = null;
-if ($lsid && preg_match('~^urn:lsid:[^:]+:([^:]+):(.+)$~', $lsid, $m)) {
-  $lsid_resolver = home_url('/lsid/' . rawurlencode($m[1]) . '/' . rawurlencode($m[2]));
+// ACF links (only if ACF is active)
+$sameAs = [];
+if (function_exists('get_field')) {
+  $fields = ['wikidata','wikipedia','viaf','orcid','ipni','bionomia','jstor','huh','zobodat'];
+  foreach ($fields as $f) {
+    $v = trim((string) get_field($f, $post_id));
+    if ($v !== '') $sameAs[] = $v;
+  }
 }
 
+// identifiers
 $identifiers = [];
 if ($stable_id) {
-  $identifiers[] = [
-    '@type'      => 'PropertyValue',
-    'propertyID' => 'HerbUA ID',
-    'value'      => $stable_id,
-  ];
+  $identifiers[] = ['@type'=>'PropertyValue','propertyID'=>'HerbUA ID','value'=>$stable_id];
 }
 if ($lsid) {
-  $identifiers[] = [
-    '@type'      => 'PropertyValue',
-    'propertyID' => 'LSID',
-    'value'      => $lsid,
-  ];
-}
-if ($lsid_resolver) {
-  $identifiers[] = [
-    '@type'      => 'PropertyValue',
-    'propertyID' => 'LSID resolver',
-    'value'      => $lsid_resolver,
-  ];
+  $identifiers[] = ['@type'=>'PropertyValue','propertyID'=>'LSID','value'=>$lsid];
 }
 
-$schema = array_filter([
-  '@context'   => 'https://schema.org',
-  '@type'      => 'Person', // for collectors
-  'name'       => get_the_title($post_id),
-  'url'        => get_permalink($post_id), // human page
-  'identifier' => $identifiers ?: null,
-]);
+$schema = [
+  '@context' => 'https://schema.org',
+  '@type'    => 'Person',
+  '@id'      => $entity_id,
+  'name'     => get_the_title($post_id),
+  'url'      => get_permalink($post_id),
+];
 
+if (!empty($identifiers)) $schema['identifier'] = $identifiers;
+if (!empty($sameAs))      $schema['sameAs']     = array_values(array_unique($sameAs));
 ?>
+
 <script type="application/ld+json">
-<?php
-echo wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-?>
+<?php echo wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>
 </script>
 
   <main id="primary" class="site-main">
