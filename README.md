@@ -94,31 +94,35 @@ e  License URL  license_url  URL
 5  Standard form  standard_form  Text
 6  Alternative names  alternative_names  Text
 7  Living years  living_years  Text
-8  Activity years  activity_years  Text
-9  ORCID  orcid  Link
-10  Bionomia  bionomia  Link
-11  Wikipedia  wikipedia  Link
-12  Wikidata  wikidata  Link
-13  IPNI  ipni  Link
-14  VIAF  viaf  Link
-15  HUH  huh  Link
-16  Zobodat  zobodat  Link
-17  JSTOR Global Plants  jstor  Link
-18  IndExs records  indexs_group  Group
+8  Life start year  life_start_year  Number
+9  Life end year  life_end_year  Number
+10  Activity years  activity_years  Text
+11  Activity start year  activity_start_year  Number
+12  Activity end year  activity_end_year  Number
+13  ORCID  orcid  Link
+14  Bionomia  bionomia  Link
+15  Wikipedia  wikipedia  Link
+16  Wikidata  wikidata  Link
+17  IPNI  ipni  Link
+18  VIAF  viaf  Link
+19  HUH  huh  Link
+20  Zobodat  zobodat  Link
+21  JSTOR Global Plants  jstor  Link
+22  IndExs records  indexs_group  Group
 a  IndExs_1  indexs_1  Link
 b  IndExs_2  indexs_2  Link
 c  IndExs_3  indexs_3  Link
 d  IndExs_4  indexs_4  Link
 e  IndExs_5  indexs_5  Link
-19  Biography  biography  Text Area
-20  Notes  notes  Text
-21  References  references  Text
-22  Label example  label_example  Image
-23  Label example 2  label_example_2  Image
-24  Label example 3  label_example_3  Image
-25  Label example 4  label_example_4  Image
-26  Label example 5  label_example_5  Image
-27  Label Rights  label_rights  Group
+23  Biography  biography  Text Area
+24  Notes  notes  Text
+25  References  references  Text
+26  Label example  label_example  Image
+27  Label example 2  label_example_2  Image
+28  Label example 3  label_example_3  Image
+29  Label example 4  label_example_4  Image
+30  Label example 5  label_example_5  Image
+31  Label Rights  label_rights  Group
 a  License ***  license  Select
 b  Attribution  attribution  Text
 c  Source URL  source_url  URL
@@ -129,6 +133,8 @@ Collector Identifiers (LSID)
 
 
 Choices for selective fields: * – cc : Creative Commons; public_domain : Public domain; permission : Used with permission; copyrighted : Copyrighted / All rights reserved; unknown : Unknown. ** – CC_BY : CC BY; CC_BY_SA : CC BY-SA; CC_BY_NC : CC BY-NC; CC_BY_ND : CC BY-ND CC0. *** – CC_BY : CC BY; CC_BY_NC : CC BY-NC; CC_BY_SA : CC BY-SA; CC_BY_ND : CC BY-ND; CC0 Public_Domain : Public Domain; All_Rights_Reserved : All rights reserved.
+
+The fields Life start year, Life end year, Activity start year, and Activity end year in ACF duplicate the information from the fields Living years and Activity years, respectively. They are not displayed to website users but are used exclusively to maintain filtering options (i.e., on the search page, the map visualization page, and the website statistics page).
 
 
 ## WP All Export
@@ -149,7 +155,7 @@ For demo purposes, use anonymized sample data only.
 The repo has been developed and realized within herbUA initiative and can be accessed from https://wp.herbua.com/
 
 ## Versioning / releases
-- `v0.1.3` initial public release
+- `v0.1.4` initial public release
 
 ## License
 GPL-3.0
