@@ -1,88 +1,328 @@
 <?php
 /**
- * Plugin Name: Collector Country SVG Map (Zoom + Choropleth)
- * Description: Clickable inline-SVG world map that lists collectors by taxonomy. Names-only detection, multi-path grouping, inactive greying, zoom/pan, and color density scale with legend. Shortcode: [collector_country_svg_map]
- * Version:     2.3.0
- * Author:      Andriy Novikov
- * License: GPL-3.0
+ * Plugin Name: Collector Country SVG Map (Zoom + Choropleth + Filters)
+ * Description: Clickable inline-SVG world map with taxonomy, herbarium, and time filters. Shortcode: [collector_country_svg_map]
+ * Version:     3.0.0
+ * Author:      You
  */
+
 if (!defined('ABSPATH')) exit;
+
+/* -------------------------------------------------------------
+ * Helper: custom SQL year filtering (same logic as archive page)
+ * ----------------------------------------------------------- */
+if (!function_exists('ccsvg_year_filter_clauses')) {
+    function ccsvg_year_filter_clauses($clauses, $query) {
+        global $wpdb;
+
+        $life_from = (int) $query->get('ccsvg_life_from');
+        $life_to   = (int) $query->get('ccsvg_life_to');
+        $act_from  = (int) $query->get('ccsvg_act_from');
+        $act_to    = (int) $query->get('ccsvg_act_to');
+
+        $life_mode = $query->get('ccsvg_life_mode') ?: 'overlap';
+        $act_mode  = $query->get('ccsvg_act_mode') ?: 'overlap';
+
+        if (!$life_from && !$life_to && !$act_from && !$act_to) {
+            return $clauses;
+        }
+
+        // --- Life interval
+        if ($life_from || $life_to) {
+            $clauses['join'] .= "
+                LEFT JOIN {$wpdb->postmeta} AS ccsvg_life_start_pm
+                  ON ({$wpdb->posts}.ID = ccsvg_life_start_pm.post_id AND ccsvg_life_start_pm.meta_key = 'life_start_year')
+                LEFT JOIN {$wpdb->postmeta} AS ccsvg_life_end_pm
+                  ON ({$wpdb->posts}.ID = ccsvg_life_end_pm.post_id AND ccsvg_life_end_pm.meta_key = 'life_end_year')
+            ";
+
+            $ls = "NULLIF(ccsvg_life_start_pm.meta_value, '')";
+            $le = "NULLIF(ccsvg_life_end_pm.meta_value, '')";
+
+            // if only one bound exists, treat it as a single year
+            $life_start_eff = "COALESCE(CAST($ls AS SIGNED), CAST($le AS SIGNED))";
+            $life_end_eff   = "COALESCE(CAST($le AS SIGNED), CAST($ls AS SIGNED))";
+
+            if ($life_mode === 'within') {
+                $clauses['where'] .= $wpdb->prepare(
+                    " AND (
+                        $life_start_eff IS NOT NULL
+                        AND $life_end_eff IS NOT NULL
+                        AND $life_start_eff >= %d
+                        AND $life_end_eff <= %d
+                    )",
+                    $life_from,
+                    $life_to
+                );
+            } else {
+                $clauses['where'] .= $wpdb->prepare(
+                    " AND (
+                        $life_start_eff IS NOT NULL
+                        AND $life_end_eff IS NOT NULL
+                        AND $life_start_eff <= %d
+                        AND $life_end_eff >= %d
+                    )",
+                    $life_to,
+                    $life_from
+                );
+            }
+        }
+
+        // --- Activity interval
+        if ($act_from || $act_to) {
+            $clauses['join'] .= "
+                LEFT JOIN {$wpdb->postmeta} AS ccsvg_act_start_pm
+                  ON ({$wpdb->posts}.ID = ccsvg_act_start_pm.post_id AND ccsvg_act_start_pm.meta_key = 'activity_start_year')
+                LEFT JOIN {$wpdb->postmeta} AS ccsvg_act_end_pm
+                  ON ({$wpdb->posts}.ID = ccsvg_act_end_pm.post_id AND ccsvg_act_end_pm.meta_key = 'activity_end_year')
+            ";
+
+            $as = "NULLIF(ccsvg_act_start_pm.meta_value, '')";
+            $ae = "NULLIF(ccsvg_act_end_pm.meta_value, '')";
+
+            $act_start_eff = "COALESCE(CAST($as AS SIGNED), CAST($ae AS SIGNED))";
+            $act_end_eff   = "COALESCE(CAST($ae AS SIGNED), CAST($as AS SIGNED))";
+
+            if ($act_mode === 'within') {
+                $clauses['where'] .= $wpdb->prepare(
+                    " AND (
+                        $act_start_eff IS NOT NULL
+                        AND $act_end_eff IS NOT NULL
+                        AND $act_start_eff >= %d
+                        AND $act_end_eff <= %d
+                    )",
+                    $act_from,
+                    $act_to
+                );
+            } else {
+                $clauses['where'] .= $wpdb->prepare(
+                    " AND (
+                        $act_start_eff IS NOT NULL
+                        AND $act_end_eff IS NOT NULL
+                        AND $act_start_eff <= %d
+                        AND $act_end_eff >= %d
+                    )",
+                    $act_to,
+                    $act_from
+                );
+            }
+        }
+
+        $clauses['groupby'] = "{$wpdb->posts}.ID";
+
+        return $clauses;
+    }
+}
+
+/* -------------------------------------------------------------
+ * Shared helper: get filtered collector IDs
+ * ----------------------------------------------------------- */
+if (!function_exists('ccsvg_get_filtered_collector_ids')) {
+    function ccsvg_get_filtered_collector_ids($args = []) {
+        $post_type   = sanitize_key($args['post_type'] ?? 'collector');
+        $geo_tax     = sanitize_key($args['geo_taxonomy'] ?? 'geography');
+        $group_tax   = sanitize_key($args['group_taxonomy'] ?? 'area');
+        $herb_tax    = sanitize_key($args['herbarium_taxonomy'] ?? 'herbarium');
+
+        $geo_slug    = sanitize_text_field($args['geo_slug'] ?? '');
+        $group_slug  = sanitize_text_field($args['group_slug'] ?? '');
+        $herb_slug   = sanitize_text_field($args['herbarium_slug'] ?? '');
+
+        $life_from   = (int) ($args['life_from'] ?? 0);
+        $life_to     = (int) ($args['life_to'] ?? 0);
+        $act_from    = (int) ($args['act_from'] ?? 0);
+        $act_to      = (int) ($args['act_to'] ?? 0);
+
+        $life_mode   = in_array(($args['life_mode'] ?? 'overlap'), ['overlap','within'], true) ? $args['life_mode'] : 'overlap';
+        $act_mode    = in_array(($args['act_mode'] ?? 'overlap'), ['overlap','within'], true) ? $args['act_mode'] : 'overlap';
+
+        if ($life_from && $life_to && $life_from > $life_to) {
+            [$life_from, $life_to] = [$life_to, $life_from];
+        }
+        if ($act_from && $act_to && $act_from > $act_to) {
+            [$act_from, $act_to] = [$act_to, $act_from];
+        }
+
+        if ($life_from && !$life_to) $life_to = 9999;
+        if (!$life_from && $life_to) $life_from = 0;
+
+        if ($act_from && !$act_to) $act_to = 9999;
+        if (!$act_from && $act_to) $act_from = 0;
+
+        $tax_query = ['relation' => 'AND'];
+
+        if ($geo_slug !== '') {
+            $tax_query[] = [
+                'taxonomy' => $geo_tax,
+                'field'    => 'slug',
+                'terms'    => $geo_slug,
+            ];
+        }
+
+        if ($group_slug !== '') {
+            $tax_query[] = [
+                'taxonomy' => $group_tax,
+                'field'    => 'slug',
+                'terms'    => $group_slug,
+            ];
+        }
+
+        if ($herb_slug !== '') {
+            $tax_query[] = [
+                'taxonomy' => $herb_tax,
+                'field'    => 'slug',
+                'terms'    => $herb_slug,
+            ];
+        }
+
+        if (count($tax_query) === 1) {
+            $tax_query = [];
+        }
+
+        $qargs = [
+            'post_type'         => $post_type,
+            'post_status'       => 'publish',
+            'posts_per_page'    => -1,
+            'fields'            => 'ids',
+            'no_found_rows'     => true,
+            'orderby'           => 'title',
+            'order'             => 'ASC',
+            'ccsvg_life_from'   => $life_from,
+            'ccsvg_life_to'     => $life_to,
+            'ccsvg_act_from'    => $act_from,
+            'ccsvg_act_to'      => $act_to,
+            'ccsvg_life_mode'   => $life_mode,
+            'ccsvg_act_mode'    => $act_mode,
+        ];
+
+        if (!empty($tax_query)) {
+            $qargs['tax_query'] = $tax_query;
+        }
+
+        add_filter('posts_clauses', 'ccsvg_year_filter_clauses', 10, 2);
+        $ids = get_posts($qargs);
+        remove_filter('posts_clauses', 'ccsvg_year_filter_clauses', 10);
+
+        return is_array($ids) ? $ids : [];
+    }
+}
+
+/* -------------------------------------------------------------
+ * Shared helper: build geography counts from filtered collector IDs
+ * ----------------------------------------------------------- */
+if (!function_exists('ccsvg_build_geo_counts')) {
+    function ccsvg_build_geo_counts($post_ids, $taxonomy) {
+        $counts = [];
+        $active_slugs = [];
+
+        foreach ($post_ids as $pid) {
+            $terms = wp_get_post_terms($pid, $taxonomy);
+            if (is_wp_error($terms) || empty($terms)) continue;
+
+            foreach ($terms as $t) {
+                if (!isset($counts[$t->slug])) {
+                    $counts[$t->slug] = 0;
+                }
+                $counts[$t->slug]++;
+                $active_slugs[$t->slug] = true;
+            }
+        }
+
+        return [
+            'term_counts'  => $counts,
+            'active_slugs' => array_keys($active_slugs),
+            'max_count'    => !empty($counts) ? max($counts) : 0,
+        ];
+    }
+}
 
 /* -------------------------------------------------------------
  * Shortcode
  * ----------------------------------------------------------- */
 add_shortcode('collector_country_svg_map', function($atts){
     $a = shortcode_atts([
-        'post_type'      => 'collector',   // your CPT
-        'taxonomy'       => 'geography',   // your taxonomy
-        'list_count'     => '200',
-        'show_counts'    => 'yes',         // yes|no
-        'slug_style'     => 'sanitize',    // sanitize|lower
-        'click_behavior' => 'ajax',        // ajax|link
-        'taxonomy_base'  => '/geography',  // used when click_behavior=link
-        'height'         => '520',         // px
+        'post_type'         => 'collector',
+        'taxonomy'          => 'geography',
+        'groups_taxonomy'   => 'area',
+        'herbaria_taxonomy' => 'herbarium',
+        'list_count'        => '200',
+        'show_counts'       => 'yes',
+        'slug_style'        => 'sanitize',
+        'click_behavior'    => 'ajax',
+        'taxonomy_base'     => '/geography',
+        'height'            => '520',
     ], $atts, 'collector_country_svg_map');
 
     $uid         = 'ccsvg-' . wp_generate_password(6, false, false);
     $post_type   = sanitize_key($a['post_type']);
     $taxonomy    = sanitize_key($a['taxonomy']);
+    $groups_tax  = sanitize_key($a['groups_taxonomy']);
+    $herbaria_tax= sanitize_key($a['herbaria_taxonomy']);
+
     $list_count  = max(1, (int)$a['list_count']);
-    $show_counts = ($a['show_counts']==='yes') ? 'yes' : 'no';
+    $show_counts = ($a['show_counts'] === 'yes') ? 'yes' : 'no';
     $slug_style  = in_array($a['slug_style'], ['sanitize','lower'], true) ? $a['slug_style'] : 'sanitize';
     $click_beh   = in_array($a['click_behavior'], ['ajax','link'], true) ? $a['click_behavior'] : 'ajax';
     $tax_base    = trailingslashit(trim($a['taxonomy_base']));
     $height      = max(300, (int)$a['height']);
 
-    /* ---------------------------------------------------------
-     * Build list of "active" slugs (terms that actually have posts)
-     * ------------------------------------------------------- */
-    $active_terms = get_terms([
-        'taxonomy'   => $taxonomy,
-        'hide_empty' => true,
-        'fields'     => 'ids',
-    ]);
-    $active_slugs = [];
-    if (!is_wp_error($active_terms) && $active_terms) {
-        $terms_full = get_terms([
-            'taxonomy'   => $taxonomy,
-            'include'    => $active_terms,
-            'hide_empty' => false,
-        ]);
-        if (!is_wp_error($terms_full)) {
-            foreach ($terms_full as $t) {
-                $active_slugs[] = $t->slug;
-            }
-        }
-    }
+    // ---------- Filters from URL ----------
+    $filter_group      = isset($_GET['ccsvg_group']) ? sanitize_text_field($_GET['ccsvg_group']) : '';
+    $filter_herbarium  = isset($_GET['ccsvg_herbarium']) ? sanitize_text_field($_GET['ccsvg_herbarium']) : '';
 
-    /* ---------------------------------------------------------
-     * Build slug -> count (for choropleth), and find max
-     * ------------------------------------------------------- */
-    $term_counts = [];
-    $terms_for_counts = get_terms([
-        'taxonomy'   => $taxonomy,
-        'hide_empty' => false,
+    $life_from = isset($_GET['life_from']) ? (int) $_GET['life_from'] : 0;
+    $life_to   = isset($_GET['life_to'])   ? (int) $_GET['life_to']   : 0;
+    $act_from  = isset($_GET['act_from'])  ? (int) $_GET['act_from']  : 0;
+    $act_to    = isset($_GET['act_to'])    ? (int) $_GET['act_to']    : 0;
+
+    $life_mode = isset($_GET['life_mode']) ? sanitize_text_field($_GET['life_mode']) : 'overlap';
+    $act_mode  = isset($_GET['act_mode'])  ? sanitize_text_field($_GET['act_mode'])  : 'overlap';
+
+    if (!in_array($life_mode, ['overlap','within'], true)) $life_mode = 'overlap';
+    if (!in_array($act_mode, ['overlap','within'], true))  $act_mode  = 'overlap';
+
+    // ---------- Build filtered IDs and choropleth data ----------
+    $filtered_ids = ccsvg_get_filtered_collector_ids([
+        'post_type'          => $post_type,
+        'geo_taxonomy'       => $taxonomy,
+        'group_taxonomy'     => $groups_tax,
+        'herbarium_taxonomy' => $herbaria_tax,
+        'group_slug'         => $filter_group,
+        'herbarium_slug'     => $filter_herbarium,
+        'life_from'          => $life_from,
+        'life_to'            => $life_to,
+        'act_from'           => $act_from,
+        'act_to'             => $act_to,
+        'life_mode'          => $life_mode,
+        'act_mode'           => $act_mode,
     ]);
-    if (!is_wp_error($terms_for_counts)) {
-        foreach ($terms_for_counts as $t) {
-            $term_counts[$t->slug] = (int) $t->count;
-        }
-    }
-    $max_count = 0;
-    foreach ($term_counts as $c) {
-        if ($c > $max_count) $max_count = $c;
-    }
+
+    $geo_data = ccsvg_build_geo_counts($filtered_ids, $taxonomy);
+    $active_slugs = $geo_data['active_slugs'];
+    $term_counts  = $geo_data['term_counts'];
+    $max_count    = $geo_data['max_count'];
+
+    // ---------- Filter dropdown terms ----------
+    $group_terms = get_terms([
+        'taxonomy'   => $groups_tax,
+        'hide_empty' => false,
+        'orderby'    => 'name',
+        'order'      => 'ASC',
+    ]);
+
+    $herbarium_terms = get_terms([
+        'taxonomy'   => $herbaria_tax,
+        'hide_empty' => false,
+        'orderby'    => 'name',
+        'order'      => 'ASC',
+    ]);
 
     /**
      * === PASTE YOUR FULL world.svg BELOW, replacing $inline_svg. ===
-     * Keep only one <svg> root. The script will:
-     *  - read country names from <title>, or data-name/name attributes;
-     *  - if still missing, try class tokens that look like names (e.g., class="Afghanistan");
-     *  - group multiple paths per country (islands) into one interactive unit.
      */
     $inline_svg = <<<'SVG'
 <!-- ⬇⬇⬇ REPLACE THIS WITH YOUR REAL world.svg CONTENT ⬇⬇⬇ -->
-<svg viewBox="0 0 1000 520" xmlns:mapsvg="http://mapsvg.com" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="World map placeholder">
+<svg viewBox="0 0 1000 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="World map placeholder">
  
    <path
      d="m 479.68275,331.6274 -0.077,0.025 -0.258,0.155 -0.147,0.054 -0.134,0.027 -0.105,-0.011 -0.058,-0.091 0.006,-0.139 -0.024,-0.124 -0.02,-0.067 0.038,-0.181 0.086,-0.097 0.119,-0.08 0.188,0.029 0.398,0.116 0.083,0.109 10e-4,0.072 -0.073,0.119 z"
@@ -1116,6 +1356,30 @@ SVG;
      * Scoped styles
      * ----------------------------------------------------------- */
     $css = "
+      #$uid .ccsvg-filters{
+        margin-bottom:16px; border:1px solid #eee; border-radius:12px; background:#fff;
+        box-shadow:0 2px 8px rgba(0,0,0,.05); padding:12px;
+      }
+      #$uid .ccsvg-filter-form{
+        display:flex; flex-wrap:wrap; gap:12px; align-items:end;
+      }
+      #$uid .ccsvg-filter-group{
+        display:flex; flex-direction:column; min-width:180px;
+      }
+      #$uid .ccsvg-filter-group label{
+        font-size:13px; color:#5a6a78; margin-bottom:4px;
+      }
+      #$uid .ccsvg-filter-group input,
+      #$uid .ccsvg-filter-group select{
+        padding:.55rem .75rem; border:1px solid #ccc; border-radius:6px; background:#fff;
+      }
+      #$uid .ccsvg-year-range{
+        display:flex; gap:.4rem;
+      }
+      #$uid .ccsvg-year-range input{
+        width:110px;
+      }
+
       #$uid .map-wrap{height:{$height}px;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.08);background:#fff;position:relative;}
       #$uid svg{width:100%;height:100%;display:block}
       #$uid .results{margin-top:12px;border:1px solid #eee;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05);padding:12px}
@@ -1123,15 +1387,11 @@ SVG;
       #$uid .item{padding:8px 10px;border-radius:8px;border:1px solid #f0f0f0;background:#fafafa}
       #$uid .err{margin-top:12px;border:1px solid #f5c2c7;background:#f8d7da;color:#842029;padding:12px;border-radius:12px}
       #$uid .loading{opacity:.7}
-      /* Interactivity — force pointer events on geometry */
       #$uid .country-piece, #$uid .country-piece * { pointer-events:auto !important; }
       #$uid path, #$uid g { pointer-events:auto !important; }
-      /* Group hover */
       #$uid .cc-active { filter:brightness(0.95); }
-      /* Inactive (no posts) look */
       #$uid .cc-inactive path { fill:#eaeff0 !important; stroke:#cfd7da !important; opacity:.75; }
       #$uid .cc-inactive, #$uid .cc-inactive * { pointer-events:none !important; cursor:default !important; }
-      /* Zoom controls */
       #$uid .cc-zoom-controls{
         position:absolute; right:10px; top:10px; z-index:5;
         display:flex; flex-direction:column; gap:6px;
@@ -1143,19 +1403,11 @@ SVG;
       #$uid .map-wrap{ position:relative; }
       #$uid .cc-grab{ cursor:grab; }
       #$uid .cc-grabbing{ cursor:grabbing; }
-      /* Legend */
-      #$uid .cc-legend{
-        position:absolute; left:10px; bottom:10px; z-index:5; background:#fff;
-        border:1px solid #e1e5e8; border-radius:8px; padding:8px 10px;
-        box-shadow:0 2px 6px rgba(0,0,0,.08); font-size:12px; color:#334;
-        display:flex; align-items:center; gap:10px;
+
+      @media (max-width: 700px){
+        #$uid .ccsvg-filter-group{ min-width:100%; }
+        #$uid .ccsvg-year-range input{ width:100%; }
       }
-      #$uid .cc-legend .bar{
-        width:140px; height:10px; border-radius:6px;
-        background:linear-gradient(to right, #dff3e6, #1f7a4d);
-        border:1px solid #e1e5e8;
-      }
-      #$uid .cc-legend .ticks{ display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; }
     ";
 
     /* -------------------------------------------------------------
@@ -1166,52 +1418,117 @@ SVG;
         'nonce'          => wp_create_nonce('ccsvg-nonce'),
         'post_type'      => $post_type,
         'taxonomy'       => $taxonomy,
+        'groups_taxonomy'=> $groups_tax,
+        'herbaria_taxonomy' => $herbaria_tax,
         'list_count'     => $list_count,
         'show_counts'    => $show_counts,
         'slug_style'     => $slug_style,
         'click_behavior' => $click_beh,
         'taxonomy_base'  => $tax_base,
         'uid'            => $uid,
-        /* Optional: mapping overrides if your taxonomy slugs differ from names */
         'nameToSlugOverrides' => [
-          // 'Côte d\'Ivoire'      => 'cote-divoire',
-          // 'Russian Federation'   => 'russia',
-          // 'United States'        => 'united-states',
+          // 'Russian Federation' => 'russia',
         ],
-        'active_slugs'   => $active_slugs, // slugs that have posts
-        'term_counts'    => $term_counts,  // slug -> count
-        'max_count'      => $max_count,    // maximum count for legend scale
+        'active_slugs'   => $active_slugs,
+        'term_counts'    => $term_counts,
+        'max_count'      => $max_count,
         'choropleth'     => [
-            'low'  => '#dff3e6', // very light green
-            'high' => '#1f7a4d', // deep green
+            'low'  => '#dff3e6',
+            'high' => '#1f7a4d',
+        ],
+        'current_filters'=> [
+            'group'      => $filter_group,
+            'herbarium'  => $filter_herbarium,
+            'life_from'  => $life_from,
+            'life_to'    => $life_to,
+            'act_from'   => $act_from,
+            'act_to'     => $act_to,
+            'life_mode'  => $life_mode,
+            'act_mode'   => $act_mode,
         ],
     ];
     $cfg_json = wp_json_encode($cfg);
 
     ob_start(); ?>
     <style><?php echo $css; ?></style>
+
     <div id="<?php echo esc_attr($uid); ?>">
+
+      <div class="ccsvg-filters">
+        <form method="get" class="ccsvg-filter-form">
+          <div class="ccsvg-filter-group">
+            <label for="<?php echo esc_attr($uid); ?>-group">Taxonomic group</label>
+            <select name="ccsvg_group" id="<?php echo esc_attr($uid); ?>-group">
+              <option value="">All</option>
+              <?php if (!is_wp_error($group_terms)) :
+                foreach ($group_terms as $t) :
+                  echo '<option value="'.esc_attr($t->slug).'" '.selected($filter_group, $t->slug, false).'>'.esc_html($t->name).'</option>';
+                endforeach;
+              endif; ?>
+            </select>
+          </div>
+
+          <div class="ccsvg-filter-group">
+            <label for="<?php echo esc_attr($uid); ?>-herbarium">Hosting herbarium</label>
+            <select name="ccsvg_herbarium" id="<?php echo esc_attr($uid); ?>-herbarium">
+              <option value="">All</option>
+              <?php if (!is_wp_error($herbarium_terms)) :
+                foreach ($herbarium_terms as $t) :
+                  echo '<option value="'.esc_attr($t->slug).'" '.selected($filter_herbarium, $t->slug, false).'>'.esc_html($t->name).'</option>';
+                endforeach;
+              endif; ?>
+            </select>
+          </div>
+
+          <div class="ccsvg-filter-group">
+            <label>Life interval</label>
+            <div class="ccsvg-year-range">
+              <input type="number" name="life_from" value="<?php echo esc_attr($life_from ?: ''); ?>" placeholder="from">
+              <input type="number" name="life_to" value="<?php echo esc_attr(($life_to && $life_to !== 9999) ? $life_to : ''); ?>" placeholder="to">
+            </div>
+          </div>
+
+          <div class="ccsvg-filter-group">
+            <label for="<?php echo esc_attr($uid); ?>-life-mode">Life mode</label>
+            <select name="life_mode" id="<?php echo esc_attr($uid); ?>-life-mode">
+              <option value="overlap" <?php selected($life_mode, 'overlap'); ?>>Overlaps interval</option>
+              <option value="within" <?php selected($life_mode, 'within'); ?>>Inside interval only</option>
+            </select>
+          </div>
+
+          <div class="ccsvg-filter-group">
+            <label>Activity interval</label>
+            <div class="ccsvg-year-range">
+              <input type="number" name="act_from" value="<?php echo esc_attr($act_from ?: ''); ?>" placeholder="from">
+              <input type="number" name="act_to" value="<?php echo esc_attr(($act_to && $act_to !== 9999) ? $act_to : ''); ?>" placeholder="to">
+            </div>
+          </div>
+
+          <div class="ccsvg-filter-group">
+            <label for="<?php echo esc_attr($uid); ?>-act-mode">Activity mode</label>
+            <select name="act_mode" id="<?php echo esc_attr($uid); ?>-act-mode">
+              <option value="overlap" <?php selected($act_mode, 'overlap'); ?>>Overlaps interval</option>
+              <option value="within" <?php selected($act_mode, 'within'); ?>>Inside interval only</option>
+            </select>
+          </div>
+
+          <div class="ccsvg-filter-group">
+            <button type="submit" class="button">Apply filters</button>
+          </div>
+
+          <div class="ccsvg-filter-group">
+            <a class="button" href="<?php echo esc_url(get_permalink()); ?>">Reset</a>
+          </div>
+        </form>
+      </div>
+
       <div class="map-wrap"><?php echo $inline_svg; ?></div>
 
-      <!-- Zoom controls -->
       <div class="cc-zoom-controls" aria-label="Map zoom controls">
         <button type="button" class="cc-zoom-in"  aria-label="Zoom in">+</button>
         <button type="button" class="cc-zoom-out" aria-label="Zoom out">−</button>
         <button type="button" class="cc-zoom-reset" aria-label="Reset view">⤾</button>
       </div>
-      
-      <?php /*
-      <!-- Legend -->
-      <div class="cc-legend" aria-label="Collector density">
-        <div class="bar" aria-hidden="true"></div>
-        <div>
-          <div style="font-weight:600; margin-bottom:4px;">Collectors</div>
-          <div class="ticks">
-            <span>0</span><span id="cc-max-<?php echo esc_attr($uid); ?>">0</span>
-          </div>
-        </div>
-      </div>
-      */ ?>
 
       <div class="results" aria-live="polite"></div>
       <script type="application/json" id="cfg-<?php echo esc_attr($uid); ?>"><?php echo $cfg_json; ?></script>
@@ -1226,14 +1543,11 @@ SVG;
       const cfg = JSON.parse((document.getElementById('cfg-<?php echo esc_js($uid); ?>')||{}).textContent||'{}');
       if (!svg) { results.innerHTML = '<div class="err">SVG not found.</div>'; return; }
 
-      /* ---------- Utilities ---------- */
       const ACTIVE = new Set((cfg.active_slugs || []));
       const termCounts = cfg.term_counts || {};
       const maxCount = Math.max(0, +(cfg.max_count || 0));
       const lowHex  = (cfg.choropleth && cfg.choropleth.low)  || '#dff3e6';
       const highHex = (cfg.choropleth && cfg.choropleth.high) || '#1f7a4d';
-      const maxLbl  = document.getElementById('cc-max-<?php echo esc_js($uid); ?>');
-      if (maxLbl) maxLbl.textContent = String(maxCount);
 
       function textFromTitle(node){
         if (!node) return '';
@@ -1244,7 +1558,6 @@ SVG;
         return /^[A-Za-z][A-Za-z_\-’' ]*$/.test(tok);
       }
       function pickNameFor(node){
-        // Priority: data-name > name > <title> (self/ancestor) > class tokens
         let name = node.getAttribute && (node.getAttribute('data-name') || node.getAttribute('name'));
         if (name && name.trim()) return name.trim();
 
@@ -1283,7 +1596,7 @@ SVG;
       function slugify(s){
         s = (s||'').toString().trim();
         if (s.normalize) s = s.normalize('NFKD');
-        s = s.replace(/[\u0300-\u036f]/g,''); // strip diacritics
+        s = s.replace(/[\u0300-\u036f]/g,'');
         s = s.replace(/&/g,'and').replace(/[’‘]/g,"'");
         s = s.replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase();
         return s;
@@ -1295,7 +1608,6 @@ SVG;
       }
       function isActiveName(name){ return ACTIVE.has(toSlug(name)); }
 
-      // Choropleth helpers
       function hexToRgb(h){
         const m = (h||'').replace('#','').match(/^([a-f0-9]{6})$/i);
         if (!m) return {r:223,g:243,b:230};
@@ -1317,10 +1629,9 @@ SVG;
         return rgbToHex(r,g,b);
       }
 
-      /* ---------- Build index: name -> Set(paths), mark active/inactive + color ---------- */
       const countryIndex = new Map();
-
       const allPaths = svg.querySelectorAll('path');
+
       allPaths.forEach(p => {
         let host = p.closest('g') || p;
         let name = pickNameFor(host);
@@ -1347,7 +1658,7 @@ SVG;
           p.style.pointerEvents = 'auto';
         } else {
           p.classList.add('cc-inactive');
-          if (!p.hasAttribute('fill'))   p.setAttribute('fill', '#eaeff0');
+          if (!p.hasAttribute('fill')) p.setAttribute('fill', '#eaeff0');
           if (!p.hasAttribute('stroke')) p.setAttribute('stroke', '#cfd7da');
           if (!p.hasAttribute('stroke-width')) p.setAttribute('stroke-width', '0.7');
           p.style.cursor = 'default';
@@ -1362,7 +1673,6 @@ SVG;
         return set ? Array.from(set) : [];
       }
 
-      /* ---------- Group hover (only for active) ---------- */
       svg.addEventListener('mouseover', e => {
         const p = e.target.closest('path.country-piece');
         if (!p || p.classList.contains('cc-inactive')) return;
@@ -1370,6 +1680,7 @@ SVG;
         if (!name) return;
         pieces(name).forEach(el => el.classList.add('cc-active'));
       });
+
       svg.addEventListener('mouseout', e => {
         const p = e.target.closest('path.country-piece');
         if (!p || p.classList.contains('cc-inactive')) return;
@@ -1378,7 +1689,6 @@ SVG;
         pieces(name).forEach(el => el.classList.remove('cc-active'));
       });
 
-      /* ---------- Click -> taxonomy (ignore inactive) ---------- */
       svg.addEventListener('click', e => {
         const p = e.target.closest('path.country-piece');
         if (!p || p.classList.contains('cc-inactive')) return;
@@ -1394,25 +1704,38 @@ SVG;
         }
 
         results.innerHTML = '<div class="loading">Loading collectors for <strong>'+name+'</strong>…</div>';
+
         const form = new FormData();
-        form.append('action','ccsvg_list_collectors');
-        form.append('nonce',  cfg.nonce);
+        form.append('action', 'ccsvg_list_collectors');
+        form.append('nonce', cfg.nonce);
         form.append('taxonomy', cfg.taxonomy);
+        form.append('groups_taxonomy', cfg.groups_taxonomy);
+        form.append('herbaria_taxonomy', cfg.herbaria_taxonomy);
         form.append('post_type', cfg.post_type);
         form.append('term_slug', slug);
         form.append('country_name', name);
         form.append('list_count', cfg.list_count);
         form.append('show_counts', cfg.show_counts);
 
+        const f = cfg.current_filters || {};
+        form.append('group_slug', f.group || '');
+        form.append('herbarium_slug', f.herbarium || '');
+        form.append('life_from', f.life_from || '');
+        form.append('life_to', f.life_to || '');
+        form.append('act_from', f.act_from || '');
+        form.append('act_to', f.act_to || '');
+        form.append('life_mode', f.life_mode || 'overlap');
+        form.append('act_mode', f.act_mode || 'overlap');
+
         fetch(cfg.ajax_url, {method:'POST', body:form, credentials:'same-origin'})
           .then(r => r.text())
           .then(html => { results.innerHTML = html; })
-          .catch(err => { results.innerHTML = '<div class="err">Failed to load collectors — '+(err && err.message ? err.message : 'unknown error')+'</div>'; });
+          .catch(err => {
+            results.innerHTML = '<div class="err">Failed to load collectors — ' + (err && err.message ? err.message : 'unknown error') + '</div>';
+          });
       });
 
-      /* =========================================
-       * Zoom & Pan for inline SVG (no libraries)
-       * =======================================*/
+      // Zoom & Pan
       (function enableZoomPan(){
         const mapWrap = wrap.querySelector('.map-wrap');
         if (!svg || !mapWrap) return;
@@ -1424,21 +1747,19 @@ SVG;
           svg.setAttribute('viewBox', vbAttr);
         }
 
-        const vb0 = svg.getAttribute('viewBox').split(/\s+/).map(Number); // [x, y, w, h] initial
-        let vx = vb0[0], vy = vb0[1], vw = vb0[2], vh = vb0[3];           // current
-        const minScale = 0.5;   // zoom in to 2x (vw * minScale)
-        const maxScale = 6;     // zoom out to 1/6 (vw * maxScale)
-        const zoomStep = 1.2;   // wheel/button factor
+        const vb0 = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+        let vx = vb0[0], vy = vb0[1], vw = vb0[2], vh = vb0[3];
+        const minScale = 0.5;
+        const maxScale = 6;
+        const zoomStep = 1.2;
 
         function applyViewBox(){ svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`); }
-
         function clientToSvg(cx, cy){
           const rect = svg.getBoundingClientRect();
-          const sx = vx + (cx - rect.left) / rect.width  * vw;
-          const sy = vy + (cy - rect.top)  / rect.height * vh;
+          const sx = vx + (cx - rect.left) / rect.width * vw;
+          const sy = vy + (cy - rect.top) / rect.height * vh;
           return {x: sx, y: sy};
         }
-
         function zoomAt(cx, cy, factor){
           const focal = clientToSvg(cx, cy);
           const newVW = vw / factor;
@@ -1480,7 +1801,7 @@ SVG;
           if (e.button !== 0) return;
           const piece = e.target.closest('path.country-piece');
           if (piece && !piece.classList.contains('cc-inactive')) {
-            if (!e.altKey) return; // allow click to work; hold ALT to force pan
+            if (!e.altKey) return;
           }
           dragging = true;
           start = {x: e.clientX, y: e.clientY};
@@ -1495,7 +1816,7 @@ SVG;
           const rect = svg.getBoundingClientRect();
           const dxClient = e.clientX - start.x;
           const dyClient = e.clientY - start.y;
-          const dxSvg = dxClient / rect.width  * vw;
+          const dxSvg = dxClient / rect.width * vw;
           const dySvg = dyClient / rect.height * vh;
 
           vx = startV.x - dxSvg;
@@ -1510,7 +1831,6 @@ SVG;
             if (vy < by) vy = by;
             if (vy + vh > by + bh) vy = by + bh - vh;
           }
-
           applyViewBox();
         });
 
@@ -1521,19 +1841,15 @@ SVG;
           mapWrap.classList.add('cc-grab');
         });
 
-        const btnIn    = wrap.querySelector('.cc-zoom-in');
-        const btnOut   = wrap.querySelector('.cc-zoom-out');
-        const btnReset = wrap.querySelector('.cc-zoom-reset');
-
-        btnIn?.addEventListener('click', () => {
+        wrap.querySelector('.cc-zoom-in')?.addEventListener('click', () => {
           const rect = svg.getBoundingClientRect();
           zoomAt(rect.left + rect.width/2, rect.top + rect.height/2, zoomStep);
         });
-        btnOut?.addEventListener('click', () => {
+        wrap.querySelector('.cc-zoom-out')?.addEventListener('click', () => {
           const rect = svg.getBoundingClientRect();
           zoomAt(rect.left + rect.width/2, rect.top + rect.height/2, 1/zoomStep);
         });
-        btnReset?.addEventListener('click', () => {
+        wrap.querySelector('.cc-zoom-reset')?.addEventListener('click', () => {
           vx = vb0[0]; vy = vb0[1]; vw = vb0[2]; vh = vb0[3];
           applyViewBox();
         });
@@ -1543,6 +1859,7 @@ SVG;
           zoomAt(e.clientX, e.clientY, zoomStep);
         });
       })();
+
     })();
     </script>
     <?php
@@ -1550,57 +1867,82 @@ SVG;
 });
 
 /* -------------------------------------------------------------
- * AJAX: list collectors
+ * AJAX: list collectors (with filters)
  * ----------------------------------------------------------- */
 add_action('wp_ajax_ccsvg_list_collectors',        'ccsvg_list_collectors_cb');
 add_action('wp_ajax_nopriv_ccsvg_list_collectors', 'ccsvg_list_collectors_cb');
+
 function ccsvg_list_collectors_cb() {
     if (!check_ajax_referer('ccsvg-nonce','nonce', false)) {
         status_header(403);
         echo '<div class="err">Security check failed.</div>';
         wp_die();
     }
-    $taxonomy    = sanitize_key($_POST['taxonomy'] ?? 'geography');
-    $post_type   = sanitize_key($_POST['post_type'] ?? 'collector');
-    $term_slug   = sanitize_title($_POST['term_slug'] ?? '');
-    $country     = sanitize_text_field($_POST['country_name'] ?? '');
-    $list_count  = max(1, (int)($_POST['list_count'] ?? 200));
-    $show_counts = (($_POST['show_counts'] ?? 'yes') === 'yes');
+
+    $taxonomy      = sanitize_key($_POST['taxonomy'] ?? 'geography');
+    $groups_tax    = sanitize_key($_POST['groups_taxonomy'] ?? 'area');
+    $herbaria_tax  = sanitize_key($_POST['herbaria_taxonomy'] ?? 'herbarium');
+    $post_type     = sanitize_key($_POST['post_type'] ?? 'collector');
+
+    $term_slug     = sanitize_title($_POST['term_slug'] ?? '');
+    $country       = sanitize_text_field($_POST['country_name'] ?? '');
+    $list_count    = max(1, (int)($_POST['list_count'] ?? 200));
+    $show_counts   = (($_POST['show_counts'] ?? 'yes') === 'yes');
+
+    $group_slug    = sanitize_text_field($_POST['group_slug'] ?? '');
+    $herbarium_slug= sanitize_text_field($_POST['herbarium_slug'] ?? '');
+
+    $life_from     = (int)($_POST['life_from'] ?? 0);
+    $life_to       = (int)($_POST['life_to'] ?? 0);
+    $act_from      = (int)($_POST['act_from'] ?? 0);
+    $act_to        = (int)($_POST['act_to'] ?? 0);
+
+    $life_mode     = sanitize_text_field($_POST['life_mode'] ?? 'overlap');
+    $act_mode      = sanitize_text_field($_POST['act_mode'] ?? 'overlap');
 
     if (empty($term_slug)) {
         echo '<div class="err">No country selected.</div>';
         wp_die();
     }
+
     $term = get_term_by('slug', $term_slug, $taxonomy);
     if (!$term || is_wp_error($term)) {
         echo '<div class="err">No matching term for <strong>'.esc_html($country).'</strong> (' . esc_html($term_slug) . ').</div>';
         wp_die();
     }
 
-    $q = new WP_Query([
-        'post_type'      => $post_type,
-        'posts_per_page' => $list_count,
-        'tax_query'      => [[
-            'taxonomy' => $taxonomy,
-            'field'    => 'slug',
-            'terms'    => $term->slug,
-        ]],
-        'orderby'        => 'title',
-        'order'          => 'ASC',
-        'no_found_rows'  => true,
-        'fields'         => 'ids',
+    // Build filtered IDs, but now country is fixed to clicked term
+    $ids = ccsvg_get_filtered_collector_ids([
+        'post_type'          => $post_type,
+        'geo_taxonomy'       => $taxonomy,
+        'group_taxonomy'     => $groups_tax,
+        'herbarium_taxonomy' => $herbaria_tax,
+        'geo_slug'           => $term->slug,
+        'group_slug'         => $group_slug,
+        'herbarium_slug'     => $herbarium_slug,
+        'life_from'          => $life_from,
+        'life_to'            => $life_to,
+        'act_from'           => $act_from,
+        'act_to'             => $act_to,
+        'life_mode'          => in_array($life_mode, ['overlap','within'], true) ? $life_mode : 'overlap',
+        'act_mode'           => in_array($act_mode, ['overlap','within'], true) ? $act_mode : 'overlap',
     ]);
 
-    $count_html = $show_counts ? '<small style="opacity:.75"> (' . intval($q->post_count) . ')</small>' : '';
+    if ($list_count > 0) {
+        $ids = array_slice($ids, 0, $list_count);
+    }
+
+    $count_html = $show_counts ? '<small style="opacity:.75"> (' . intval(count($ids)) . ')</small>' : '';
 
     echo '<div><div style="font-weight:600;margin-bottom:8px;">Collectors for <strong>'.esc_html($term->name).'</strong>'.$count_html.'</div><div class="grid">';
-    if ($q->have_posts()) {
-        foreach ($q->posts as $pid) {
+    if (!empty($ids)) {
+        foreach ($ids as $pid) {
             echo '<div class="item"><a href="'.esc_url(get_permalink($pid)).'">'.esc_html(get_the_title($pid)).'</a></div>';
         }
     } else {
         echo '<div class="item">No collectors found.</div>';
     }
     echo '</div></div>';
+
     wp_die();
 }
