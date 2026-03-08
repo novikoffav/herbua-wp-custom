@@ -15,7 +15,7 @@
 get_header();
 
 // ====== Optional public CSV download (set your URL or leave empty) ======
-$csv_url = 'https://wp.herbua.com/wp-load.php?security_token=0f4d868f2cd8f47b&export_id=3&action=get_data';
+$csv_url = 'https://URL TO YOUR CSV FILE WITH ARCHIVED DATABASE TO DOWLOAD BY USERS';
 // =======================================================================
 
 // ---------- Small helpers ----------
